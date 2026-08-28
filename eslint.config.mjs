@@ -12,6 +12,9 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Skill scripts ship with the ui-ux-pro-max CLI and use CommonJS,
+    // so they're not part of the app's source.
+    ".claude/**",
   ]),
 ]);
 
