@@ -61,14 +61,14 @@ export const MAP_LINES = {
 /* ────────────────────────── Scan ────────────────────────── */
 
 export const SCAN_LINES = {
-  cameraStart: "Starting the ID scan. Please position the card inside the scan area.",
-  detected: "Identity confirmed. Welcome! You can now explore the Asthra events.",
+  cameraStart: "Starting the ID scan. Please hold your ID card steady inside the scan area.",
+  processing: "Analyzing ID card. Please hold still.",
+  recognized: (firstName: string) =>
+    `Identity confirmed. Welcome, ${firstName}. Enjoy Asthra!`,
   cameraError:
-    "I couldn't access the camera. You can enter your ID manually instead.",
-  manualLookupSuccess: (firstName: string) =>
-    `Identity confirmed. Welcome, ${firstName}. You can now explore the Asthra events.`,
-  manualLookupError: (id: string) =>
-    `I couldn't find the ID ${id}. Try ASTH001 to ASTH006.`,
+    "I couldn't access the camera. Please allow camera access and try again.",
+  scanError: "I couldn't read the ID clearly. Please hold it steady and try again.",
+  networkError: "The scanner is temporarily unavailable. Please try again in a moment.",
 } as const;
 
 /* ────────────────────────── Ask Robot ────────────────────────── */

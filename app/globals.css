@@ -230,6 +230,12 @@ body {
   50%       { box-shadow: 0 0 0 14px rgba(0, 212, 255, 0); }
 }
 
+/* Spinner */
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+
 /* ============================================================
    Animation utilities
    ============================================================ */

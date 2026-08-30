@@ -82,9 +82,11 @@ export type RobotAction =
   | { type: "event-loading"; event: EventItem }
   | { type: "event-selected"; event: EventItem }
   | { type: "scan-start" }
-  | { type: "scan-detected"; firstName: string }
+  | { type: "scan-processing" }
+  | { type: "scan-recognized"; firstName: string }
   | { type: "scan-camera-error" }
-  | { type: "scan-lookup"; id: string; firstName?: string }
+  | { type: "scan-error" }
+  | { type: "scan-network-error" }
   | { type: "schedule" }
   | { type: "map"; venue?: string }
   | { type: "ask-robot-intro" }
@@ -340,10 +342,14 @@ export function RobotVoiceProvider({ children }: { children: React.ReactNode }) 
           speakContext({ action: "scan-start" }, SCAN_LINES.cameraStart);
           break;
         }
-        case "scan-detected": {
+        case "scan-processing": {
+          speakContext({ action: "scan-processing" }, SCAN_LINES.processing);
+          break;
+        }
+        case "scan-recognized": {
           speakContext(
-            { action: "scan-detected", label: action.firstName },
-            SCAN_LINES.detected,
+            { action: "scan-recognized", label: action.firstName },
+            SCAN_LINES.recognized(action.firstName),
           );
           break;
         }
@@ -354,16 +360,17 @@ export function RobotVoiceProvider({ children }: { children: React.ReactNode }) 
           );
           break;
         }
-        case "scan-lookup": {
-          // The caller is responsible for resolving the student record
-          // and passing the first name; we just speak the canonical
-          // "Identity confirmed. Welcome, X" line.
-          const firstName =
-            (action as { firstName?: string }).firstName ??
-            action.id;
+        case "scan-error": {
           speakContext(
-            { action: "scan-lookup", label: firstName },
-            SCAN_LINES.manualLookupSuccess(firstName),
+            { action: "scan-error" },
+            SCAN_LINES.scanError,
+          );
+          break;
+        }
+        case "scan-network-error": {
+          speakContext(
+            { action: "scan-network-error" },
+            SCAN_LINES.networkError,
           );
           break;
         }

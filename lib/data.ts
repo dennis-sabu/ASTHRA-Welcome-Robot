@@ -18,13 +18,6 @@ export type EventItem = {
   time: string;
 };
 
-export type Student = {
-  id: string;
-  name: string;
-  department: string;
-  year: string;
-};
-
 export const departments: Department[] = [
   { id: "cse", name: "Computer Science & Engineering", shortName: "CSE" },
   { id: "ece", name: "Electronics & Communication", shortName: "ECE" },
@@ -157,25 +150,10 @@ export const events: EventItem[] = [
   },
 ];
 
-// Mock students that can be "detected" when scanning an ID.
-// In a real system this would come from a backend or QR/barcode decode.
-export const students: Student[] = [
-  { id: "ASTH001", name: "Aarav Sharma", department: "Computer Science & Engineering", year: "3rd Year" },
-  { id: "ASTH002", name: "Diya Krishnan", department: "Electronics & Communication", year: "2nd Year" },
-  { id: "ASTH003", name: "Rohan Mehta", department: "Mechanical Engineering", year: "4th Year" },
-  { id: "ASTH004", name: "Sneha Iyer", department: "Information Technology", year: "3rd Year" },
-  { id: "ASTH005", name: "Karthik Reddy", department: "Electrical & Electronics", year: "2nd Year" },
-  { id: "ASTH006", name: "Priya Nair", department: "Civil Engineering", year: "1st Year" },
-];
-
 export function getEvent(id: string): EventItem | undefined {
   return events.find((e) => e.id === id);
 }
 
 export function getDepartment(id: string): Department | undefined {
   return departments.find((d) => d.id === id);
-}
-
-export function getStudent(id: string): Student | undefined {
-  return students.find((s) => s.id.toLowerCase() === id.toLowerCase());
 }
