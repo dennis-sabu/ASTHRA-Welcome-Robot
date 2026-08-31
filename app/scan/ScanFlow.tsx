@@ -22,10 +22,10 @@ type Phase = "ready" | "camera" | "processing" | "detected" | "error";
 
 // ── Processing status labels ───────────────────────────────────────────────
 const PROCESSING_STEPS = [
-  "SCANNING",
-  "ANALYZING ID CARD",
-  "VERIFYING DETAILS",
-  "IDENTIFYING VISITOR",
+  "Reading your ID",
+  "Analyzing details",
+  "Verifying information",
+  "Identifying visitor",
 ] as const;
 
 // ── ID card aspect ratio (ISO/IEC 7810 ID-1: 85.6 × 53.98 mm) ─────────────
@@ -136,6 +136,53 @@ export default function ScanFlow() {
   }, [stop, stopStream]);
 
   /**
+   * Lightweight sanity check on the cropped image data before sending to backend.
+   * Rejects near-black/blown-out frames and mostly-flat color regions.
+   * Thresholds chosen to filter obvious bad captures without false positives on real IDs.
+   */
+  function validateCapturedFrame(
+    ctx: CanvasRenderingContext2D,
+    width: number,
+    height: number
+  ): { valid: boolean; reason?: string; brightness?: number; stddev?: number } {
+    const imageData = ctx.getImageData(0, 0, width, height);
+    const data = imageData.data;
+    const pixelCount = width * height;
+    
+    // Compute average luminance (rough brightness check)
+    let sum = 0;
+    for (let i = 0; i < data.length; i += 4) {
+      // Luminance approximation: 0.299R + 0.587G + 0.114B
+      sum += 0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2];
+    }
+    const avgBrightness = sum / pixelCount;
+
+    // Reject frames that are too dark (< 20) or blown out (> 245)
+    if (avgBrightness < 20) {
+      return { valid: false, reason: "Too dark", brightness: avgBrightness };
+    }
+    if (avgBrightness > 245) {
+      return { valid: false, reason: "Overexposed", brightness: avgBrightness };
+    }
+
+    // Compute stddev of luminance (rough "is there content" check)
+    let variance = 0;
+    for (let i = 0; i < data.length; i += 4) {
+      const lum = 0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2];
+      const diff = lum - avgBrightness;
+      variance += diff * diff;
+    }
+    const stddev = Math.sqrt(variance / pixelCount);
+
+    // Reject mostly-flat frames (stddev < 12 means almost no variation, likely a blank wall)
+    if (stddev < 12) {
+      return { valid: false, reason: "No content detected", brightness: avgBrightness, stddev };
+    }
+
+    return { valid: true, brightness: avgBrightness, stddev };
+  }
+
+  /**
    * Map the visible card-guide rectangle (CSS/display coordinates) into the
    * actual video pixel coordinates, accounting for `object-fit: cover`
    * scaling, centering and any letterboxing.
@@ -175,9 +222,10 @@ export default function ScanFlow() {
     const sw0 = gRect.width / scale;
     const sh0 = gRect.height / scale;
 
-    // Safety margin (6% on each side) so card borders and name text are never clipped
-    const marginX = sw0 * 0.06;
-    const marginY = sh0 * 0.06;
+    // Tightened margin (3% on each side) — enough to avoid clipping edges, but puts
+    // maximum pixel budget on the card text itself per backend's fixed-budget OCR model.
+    const marginX = sw0 * 0.03;
+    const marginY = sh0 * 0.03;
 
     const sx = Math.max(0, Math.round(sx0 - marginX));
     const sy = Math.max(0, Math.round(sy0 - marginY));
@@ -235,20 +283,37 @@ export default function ScanFlow() {
     // Natural orientation — matches the preview. No mirroring applied.
     ctx.drawImage(video, sx, sy, sw, sh, 0, 0, canvas.width, canvas.height);
 
+    // Lightweight pre-send sanity check on the cropped region
+    const validation = validateCapturedFrame(ctx, canvas.width, canvas.height);
+    
     if (process.env.NODE_ENV !== "production") {
-      console.log("Camera:", {
+      console.log("Camera:", JSON.stringify({
         videoWidth: vw,
         videoHeight: vh,
         readyState: video.readyState,
-      });
-      console.log("Crop:", {
+      }, null, 2));
+      console.log("Crop:", JSON.stringify({
         sourceCropX: sx,
         sourceCropY: sy,
         sourceCropWidth: sw,
         sourceCropHeight: sh,
         canvasWidth: canvas.width,
         canvasHeight: canvas.height,
-      });
+        cropMarginPercent: 3,
+      }, null, 2));
+      console.log("Pre-send validation:", JSON.stringify({
+        valid: validation.valid,
+        reason: validation.reason,
+        avgBrightness: validation.brightness?.toFixed(1),
+        stddev: validation.stddev?.toFixed(1),
+        thresholds: { minBrightness: 20, maxBrightness: 245, minStddev: 12 },
+      }, null, 2));
+    }
+
+    if (!validation.valid) {
+      isScanningRef.current = false;
+      setError(`Let's try that again — ${validation.reason?.toLowerCase()}. Hold the card flat under good lighting.`);
+      return;
     }
 
     canvas.toBlob(
@@ -260,15 +325,12 @@ export default function ScanFlow() {
         }
 
         if (process.env.NODE_ENV !== "production") {
-          console.log("Capture:", {
+          console.log("Capture:", JSON.stringify({
             canvasWidth: canvas.width,
             canvasHeight: canvas.height,
             blobSize: blob.size,
             mimeType: blob.type,
-          });
-          console.log("Request:", {
-            requestStartedAt: new Date().toISOString(),
-          });
+          }, null, 2));
         }
 
         await sendToApi(blob);
@@ -279,9 +341,19 @@ export default function ScanFlow() {
   };
 
   async function sendToApi(blob: Blob) {
+    // Stop the camera stream before sending to API (saves resources during 15-20s request)
+    stopStream();
+    
     setPhase("processing");
     setProcessingStep(0);
     dispatch({ type: "scan-processing" });
+
+    if (process.env.NODE_ENV !== "production") {
+      console.log("sendToApi: Starting request", JSON.stringify({
+        blobSize: blob.size,
+        apiUrl: `${API_URL}/scan-id`,
+      }, null, 2));
+    }
 
     const stepInterval = window.setInterval(() => {
       setProcessingStep((prev) =>
@@ -296,15 +368,34 @@ export default function ScanFlow() {
       SCAN_TIMEOUT_MS
     );
 
+    // Timing for dev logging (async function context, not render)
+    // eslint-disable-next-line react-hooks/purity
+    const requestStartTime = performance.now();
+
     try {
       const formData = new FormData();
       formData.append("file", blob, "id-card.jpg");
+
+      if (process.env.NODE_ENV !== "production") {
+        console.log("sendToApi: Sending fetch request...");
+      }
 
       const response = await fetch(`${API_URL}/scan-id`, {
         method: "POST",
         body: formData,
         signal: controller.signal,
       });
+
+      // eslint-disable-next-line react-hooks/purity
+      const requestDuration = performance.now() - requestStartTime;
+
+      if (process.env.NODE_ENV !== "production") {
+        console.log("sendToApi: Received response", JSON.stringify({
+          status: response.status,
+          ok: response.ok,
+          durationMs: Math.round(requestDuration),
+        }, null, 2));
+      }
 
       clearTimeout(timeoutId);
       clearInterval(stepInterval);
@@ -318,21 +409,28 @@ export default function ScanFlow() {
 
       const result: ScanApiResponse = await response.json();
       if (process.env.NODE_ENV !== "production") {
-        console.log("Response:", {
+        console.log("Response:", JSON.stringify({
           success: result.success,
           name: result.name,
+          message: result.message,
           confidence: result.confidence,
           processing_time_ms: result.processing_time_ms,
-        });
+          requestDurationMs: Math.round(requestDuration),
+        }, null, 2));
       }
       if (resetFlagRef.current) return;
 
       if (result.success && result.name) {
-        stopStream();
+        if (process.env.NODE_ENV !== "production") {
+          console.log("sendToApi: Success! Showing greeting for:", result.name);
+        }
         setRecognizedName(result.name);
         setPhase("detected");
         dispatch({ type: "scan-recognized", firstName: result.name.split(" ")[0] });
       } else {
+        if (process.env.NODE_ENV !== "production") {
+          console.log("sendToApi: API returned failure, calling handleScanFailure");
+        }
         handleScanFailure(
           result.message || "Couldn't read the ID clearly. Please position the full card inside the frame and try again.",
           "scan-error"
@@ -344,6 +442,15 @@ export default function ScanFlow() {
       if (resetFlagRef.current) return;
 
       const timedOut = err instanceof DOMException && err.name === "AbortError";
+      if (process.env.NODE_ENV !== "production") {
+        console.error("sendToApi: Caught error", {
+          error: err,
+          timedOut,
+          errorName: err instanceof Error ? err.name : "unknown",
+          errorMessage: err instanceof Error ? err.message : String(err),
+        });
+      }
+      
       if (timedOut) {
         handleScanFailure("The scan took too long. Please try again.", "scan-network-error");
       } else {
@@ -360,14 +467,11 @@ export default function ScanFlow() {
     message: string,
     voiceAction: "scan-error" | "scan-network-error"
   ) {
-    // Keep the camera live so the visitor can immediately try again.
+    // Re-acquire a fresh camera stream for retry (stream was stopped after capture)
     setError(message);
     setProcessingStep(0);
-    setPhase("camera");
-    if (videoRef.current && videoRef.current.videoWidth > 0) {
-      setVideoReady(true);
-    }
     dispatch({ type: voiceAction });
+    openCamera();
   }
 
   function reset() {
@@ -648,7 +752,7 @@ function ScanningPanel({
           {!videoReady && (
             <div className="absolute inset-0 flex items-center justify-center">
               <p className="font-sans text-[13px] font-semibold text-white/60 animate-pulse">
-                Starting camera…
+                Opening camera…
               </p>
             </div>
           )}
@@ -689,7 +793,7 @@ function ScanningPanel({
         style={{ borderColor: "rgba(255,255,255,0.06)" }}
       >
         <p className="font-sans text-[13px]" style={{ color: "rgba(255,255,255,0.45)" }}>
-          {videoReady ? "Align your ID inside the frame and tap Scan now" : "Waiting for camera…"}
+          {videoReady ? "Place your ID inside the frame, then tap Scan now" : "Starting camera…"}
         </p>
         <div className="flex items-center gap-3">
           <button
@@ -798,7 +902,7 @@ function ErrorPanel({ message, onRetry }: { message: string; onRetry: () => void
       </div>
 
       <p className="mt-6 font-sans text-[12px]" style={{ color: "rgba(255,255,255,0.3)" }}>
-        Hold the card flat inside the white frame under good lighting, name clearly visible.
+        Position the full card inside the frame with your name visible, under good lighting.
       </p>
     </div>
   );
