@@ -83,7 +83,7 @@ export type RobotAction =
   | { type: "event-selected"; event: EventItem }
   | { type: "scan-start" }
   | { type: "scan-processing" }
-  | { type: "scan-recognized"; firstName: string }
+  | { type: "scan-recognized"; fullName: string }
   | { type: "scan-camera-error" }
   | { type: "scan-error" }
   | { type: "scan-network-error" }
@@ -348,8 +348,8 @@ export function RobotVoiceProvider({ children }: { children: React.ReactNode }) 
         }
         case "scan-recognized": {
           speakContext(
-            { action: "scan-recognized", label: action.firstName },
-            SCAN_LINES.recognized(action.firstName),
+            { action: "scan-recognized", label: action.fullName },
+            SCAN_LINES.recognized(action.fullName),
           );
           break;
         }
