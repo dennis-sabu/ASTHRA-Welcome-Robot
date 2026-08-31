@@ -271,6 +271,12 @@ export default function ScanFlow() {
           });
         }
 
+        // We have everything we need from the camera now — release it
+        // immediately rather than keeping it live through the OCR call.
+        // FastAPI/PaddleOCR can take 10-20s+; the webcam must not stay
+        // active (hidden behind the processing screen) for that whole time.
+        stopStream();
+
         await sendToApi(blob);
       },
       "image/jpeg",
@@ -312,7 +318,7 @@ export default function ScanFlow() {
 
       if (!response.ok) {
         console.error("FastAPI HTTP error:", response.status, response.statusText);
-        handleScanFailure("The scanner returned an error. Please try again.", "scan-error");
+        await handleScanFailure("The scanner returned an error. Please try again.", "scan-error");
         return;
       }
 
@@ -328,12 +334,11 @@ export default function ScanFlow() {
       if (resetFlagRef.current) return;
 
       if (result.success && result.name) {
-        stopStream();
         setRecognizedName(result.name);
         setPhase("detected");
         dispatch({ type: "scan-recognized", firstName: result.name.split(" ")[0] });
       } else {
-        handleScanFailure(
+        await handleScanFailure(
           result.message || "Couldn't read the ID clearly. Please position the full card inside the frame and try again.",
           "scan-error"
         );
@@ -345,10 +350,10 @@ export default function ScanFlow() {
 
       const timedOut = err instanceof DOMException && err.name === "AbortError";
       if (timedOut) {
-        handleScanFailure("The scan took too long. Please try again.", "scan-network-error");
+        await handleScanFailure("The scan took too long. Please try again.", "scan-network-error");
       } else {
         console.error("Fetch error:", err);
-        handleScanFailure("Scanner service unavailable. Please try again.", "scan-network-error");
+        await handleScanFailure("Scanner service unavailable. Please try again.", "scan-network-error");
       }
     } finally {
       isScanningRef.current = false;
@@ -356,17 +361,23 @@ export default function ScanFlow() {
     }
   }
 
-  function handleScanFailure(
+  async function handleScanFailure(
     message: string,
     voiceAction: "scan-error" | "scan-network-error"
   ) {
-    // Keep the camera live so the visitor can immediately try again.
-    setError(message);
+    // The camera was already stopped right after capture (see captureAndSend),
+    // so retrying needs a brand-new getUserMedia() stream — the old one is gone.
+    // Clear the scanning guard first so openCamera() doesn't bail out
+    // thinking a scan is still in progress (its own flag hasn't been reset
+    // yet — that happens in sendToApi's `finally`, which runs after this).
+    isScanningRef.current = false;
     setProcessingStep(0);
-    setPhase("camera");
-    if (videoRef.current && videoRef.current.videoWidth > 0) {
-      setVideoReady(true);
-    }
+
+    await openCamera();
+
+    // openCamera() resets error state for a clean start — apply the failure
+    // reason and voice cue after, so the visitor actually sees/hears it.
+    setError(message);
     dispatch({ type: voiceAction });
   }
 
