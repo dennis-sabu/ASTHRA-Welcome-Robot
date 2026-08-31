@@ -426,7 +426,7 @@ export default function ScanFlow() {
         }
         setRecognizedName(result.name);
         setPhase("detected");
-        dispatch({ type: "scan-recognized", firstName: result.name.split(" ")[0] });
+        dispatch({ type: "scan-recognized", fullName: result.name });
       } else {
         if (process.env.NODE_ENV !== "production") {
           console.log("sendToApi: API returned failure, calling handleScanFailure");
@@ -909,27 +909,85 @@ function ErrorPanel({ message, onRetry }: { message: string; onRetry: () => void
 }
 
 function GreetingCard({ name, onReset }: { name: string; onReset: () => void }) {
-  const firstName = name.split(" ")[0];
   return (
     <div className="rounded-[24px] overflow-hidden animate-fade-up" style={{ background: "#0a0a0a", border: "1px solid rgba(255,255,255,0.1)" }}>
-      <div className="px-8 sm:px-12 py-12 sm:py-16 text-center">
-        <p className="font-sans font-semibold uppercase tracking-[0.14em]" style={{ fontSize: "12px", color: "rgba(255,255,255,0.45)" }}>
-          Identity confirmed
+      <div className="px-8 sm:px-12 py-14 sm:py-18 text-center">
+
+        {/* ── Confirmation badge ── */}
+        <div className="inline-flex items-center gap-2 rounded-full px-4 py-1.5 mb-8" style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)" }}>
+         
+          <span className="font-sans font-semibold uppercase tracking-[0.13em]" style={{ fontSize: "11px", color: "rgba(255,255,255,0.55)" }}>
+            Identity Confirmed
+          </span>
+        </div>
+
+        {/* ── Full name — hero text ── */}
+        <h1
+          className="font-display text-white uppercase leading-none"
+          style={{
+            fontSize: "clamp(28px, 7vw, 72px)",
+            letterSpacing: "-0.02em",
+            lineHeight: 1.05,
+            wordBreak: "break-word",
+            hyphens: "auto",
+          }}
+        >
+          {name}
+        </h1>
+
+        {/* ── Divider ── */}
+        <div className="mx-auto mt-8 mb-8" style={{ width: 40, height: 1, background: "rgba(255,255,255,0.12)" }} />
+
+        {/* ── Welcome copy ── */}
+        <p className="font-sans text-[15px]" style={{ color: "rgba(255,255,255,0.5)", lineHeight: 1.6 }}>
+          Welcome to{" "}
+          <span className="font-semibold" style={{ color: "rgba(255,255,255,0.85)" }}>Asthra 11.0</span>
+          {" "}— the annual technical festival of{" "}
+          <span style={{ color: "rgba(255,255,255,0.7)" }}>St. Joseph&apos;s College of Engineering and Technology, Palai</span>.
         </p>
-        <h2 className="font-display text-white mt-3" style={{ fontSize: "clamp(64px, 12vw, 108px)", lineHeight: 0.92 }}>
-          {firstName}<span style={{ color: "#fff" }}>.</span>
-        </h2>
-        <p className="mt-4 font-sans text-[16px]" style={{ color: "rgba(255,255,255,0.7)" }}>
-          Welcome, <span className="font-semibold text-white">{name}</span>.
+        <p className="mt-2 font-sans text-[13px]" style={{ color: "rgba(255,255,255,0.3)" }}>
+          We're glad to have you with us.
         </p>
-        <p className="mt-2 font-sans text-[14px]" style={{ color: "rgba(255,255,255,0.45)" }}>
-          Welcome to <span className="font-semibold" style={{ color: "rgba(255,255,255,0.7)" }}>Asthra 11.0</span>.
-        </p>
+
+        {/* ── Action buttons ── */}
         <div className="mt-10 flex flex-col sm:flex-row gap-3 justify-center">
-          <Link href="/events" data-robot-action="event-directory" data-robot-from="scan" className="inline-flex items-center justify-center gap-2 rounded-full font-sans font-semibold transition focus:outline-none focus-visible:ring-2 focus-visible:ring-white" style={{ background: "#fff", color: "#000", fontSize: "clamp(14px, 1.5vw, 15px)", padding: "13px 26px" }} onMouseEnter={(e) => ((e.currentTarget as HTMLElement).style.transform = "translateY(-1px)")} onMouseLeave={(e) => ((e.currentTarget as HTMLElement).style.transform = "")}>
+          <Link
+            href="/events"
+            data-robot-action="event-directory"
+            data-robot-from="scan"
+            className="inline-flex items-center justify-center gap-2 rounded-full font-sans font-semibold transition focus:outline-none focus-visible:ring-2 focus-visible:ring-white"
+            style={{
+              background: "#fff",
+              color: "#000",
+              fontSize: "clamp(14px, 1.5vw, 15px)",
+              padding: "13px 26px",
+              boxShadow: "0 0 0 1px rgba(255,255,255,0.1)",
+            }}
+            onMouseEnter={(e) => ((e.currentTarget as HTMLElement).style.transform = "translateY(-1px)")}
+            onMouseLeave={(e) => ((e.currentTarget as HTMLElement).style.transform = "")}
+          >
             Explore events <ArrowRight />
           </Link>
-          <button id="scan-another-btn" onClick={onReset} className="rounded-full font-sans font-semibold transition focus:outline-none focus-visible:ring-2 focus-visible:ring-white cursor-pointer" style={{ padding: "13px 26px", fontSize: "clamp(14px, 1.5vw, 15px)", background: "var(--pill-dark)", color: "var(--sign-in-text)" }}>
+          <button
+            id="scan-another-btn"
+            onClick={onReset}
+            className="rounded-full font-sans font-semibold transition focus:outline-none focus-visible:ring-2 focus-visible:ring-white cursor-pointer"
+            style={{
+              padding: "13px 26px",
+              fontSize: "clamp(14px, 1.5vw, 15px)",
+              background: "rgba(255,255,255,0.06)",
+              color: "rgba(255,255,255,0.75)",
+              border: "1px solid rgba(255,255,255,0.08)",
+            }}
+            onMouseEnter={(e) => {
+              (e.currentTarget as HTMLElement).style.background = "rgba(255,255,255,0.1)";
+              (e.currentTarget as HTMLElement).style.color = "#fff";
+            }}
+            onMouseLeave={(e) => {
+              (e.currentTarget as HTMLElement).style.background = "rgba(255,255,255,0.06)";
+              (e.currentTarget as HTMLElement).style.color = "rgba(255,255,255,0.75)";
+            }}
+          >
             Scan another
           </button>
         </div>
