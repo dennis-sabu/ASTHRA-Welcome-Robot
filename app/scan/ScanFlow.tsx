@@ -467,11 +467,12 @@ export default function ScanFlow() {
     message: string,
     voiceAction: "scan-error" | "scan-network-error"
   ) {
-    // Re-acquire a fresh camera stream for retry (stream was stopped after capture)
+    // Show the dedicated error/retry page instead of auto-reopening the camera.
+    // The user must tap "Try again" on the ErrorPanel to re-open the camera.
     setError(message);
     setProcessingStep(0);
+    setPhase("error");
     dispatch({ type: voiceAction });
-    openCamera();
   }
 
   function reset() {
