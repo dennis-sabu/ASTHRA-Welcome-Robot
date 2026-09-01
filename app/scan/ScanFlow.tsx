@@ -18,7 +18,7 @@ interface ScanApiResponse {
 }
 
 // ── State machine phases ───────────────────────────────────────────────────
-type Phase = "ready" | "camera" | "processing" | "detected" | "error";
+type Phase = "ready" | "camera" | "processing" | "review" | "detected" | "error";
 
 // ── Processing status labels ───────────────────────────────────────────────
 const PROCESSING_STEPS = [
@@ -43,6 +43,9 @@ export default function ScanFlow() {
   const startingRef = useRef(false);
   const resetFlagRef = useRef(false);
   const abortRef = useRef<AbortController | null>(null);
+  // Holds the current object URL for the review preview so it can be revoked
+  // from anywhere (retake, confirm, reset, unmount) without a stale-closure risk.
+  const capturedUrlRef = useRef<string | null>(null);
 
   const [phase, setPhase] = useState<Phase>("ready");
   const [flash, setFlash] = useState(false);
@@ -50,6 +53,8 @@ export default function ScanFlow() {
   const [recognizedName, setRecognizedName] = useState<string | null>(null);
   const [processingStep, setProcessingStep] = useState(0);
   const [videoReady, setVideoReady] = useState(false);
+  const [capturedBlob, setCapturedBlob] = useState<Blob | null>(null);
+  const [capturedPreviewUrl, setCapturedPreviewUrl] = useState<string | null>(null);
 
   const { dispatch, stop } = useRobotVoice();
 
@@ -132,6 +137,11 @@ export default function ScanFlow() {
       abortRef.current?.abort("unmount");
       stopStream();
       stop();
+      // Revoke any lingering object URL to avoid memory leaks on unmount
+      if (capturedUrlRef.current) {
+        URL.revokeObjectURL(capturedUrlRef.current);
+        capturedUrlRef.current = null;
+      }
     };
   }, [stop, stopStream]);
 
@@ -333,7 +343,19 @@ export default function ScanFlow() {
           }, null, 2));
         }
 
-        await sendToApi(blob);
+        // Frame passed validation — show the review screen so the user can
+        // confirm before we send. No delay: the object URL is created synchronously.
+        const previewUrl = URL.createObjectURL(blob);
+        capturedUrlRef.current = previewUrl;
+        setCapturedBlob(blob);
+        setCapturedPreviewUrl(previewUrl);
+        isScanningRef.current = false;
+        setPhase("review");
+        if (process.env.NODE_ENV !== "production") {
+          console.log("Review: Entering capture-review phase", JSON.stringify({
+            blobSize: blob.size,
+          }, null, 2));
+        }
       },
       "image/jpeg",
       0.94
@@ -475,12 +497,45 @@ export default function ScanFlow() {
     dispatch({ type: voiceAction });
   }
 
+  // ── Capture-review helpers ─────────────────────────────────────────────────
+
+  function revokeCapturedUrl() {
+    if (capturedUrlRef.current) {
+      URL.revokeObjectURL(capturedUrlRef.current);
+      capturedUrlRef.current = null;
+    }
+    setCapturedPreviewUrl(null);
+    setCapturedBlob(null);
+  }
+
+  function handleRetake() {
+    if (process.env.NODE_ENV !== "production") {
+      console.log("Review: User chose Retake — discarding captured frame, reopening camera");
+    }
+    revokeCapturedUrl();
+    openCamera();
+  }
+
+  async function handleConfirmScan() {
+    if (!capturedBlob) return;
+    if (process.env.NODE_ENV !== "production") {
+      console.log("Review: User confirmed — sending blob to API", JSON.stringify({
+        blobSize: capturedBlob.size,
+      }, null, 2));
+    }
+    // Snapshot the blob, revoke the preview URL, then hand off to the API.
+    const blob = capturedBlob;
+    revokeCapturedUrl();
+    await sendToApi(blob);
+  }
+
   function reset() {
     resetFlagRef.current = true;
     abortRef.current?.abort("user-reset");
     stopStream();
     stop();
     isScanningRef.current = false;
+    revokeCapturedUrl();
     setRecognizedName(null);
     setError(null);
     setProcessingStep(0);
@@ -564,6 +619,14 @@ export default function ScanFlow() {
 
               {phase === "processing" && (
                 <ProcessingPanel step={processingStep} onCancel={reset} />
+              )}
+
+              {phase === "review" && capturedPreviewUrl && (
+                <ReviewPanel
+                  previewUrl={capturedPreviewUrl}
+                  onRetake={handleRetake}
+                  onConfirm={handleConfirmScan}
+                />
               )}
 
               {phase === "error" && (
@@ -909,6 +972,91 @@ function ErrorPanel({ message, onRetry }: { message: string; onRetry: () => void
   );
 }
 
+function ReviewPanel({
+  previewUrl,
+  onRetake,
+  onConfirm,
+}: {
+  previewUrl: string;
+  onRetake: () => void;
+  onConfirm: () => void;
+}) {
+  return (
+    <div>
+      {/* Captured image — same 1.586:1 aspect ratio as the live camera preview */}
+      <div
+        className="relative w-full bg-black overflow-hidden"
+        style={{ aspectRatio: "1.586 / 1" }}
+      >
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={previewUrl}
+          alt="Captured ID card"
+          className="absolute inset-0 h-full w-full object-cover"
+        />
+
+        {/* Review badge — same pill style as the scanning badge */}
+        <div
+          className="absolute top-3.5 left-1/2 -translate-x-1/2 flex items-center gap-2 rounded-full font-sans font-semibold uppercase z-10"
+          style={{
+            background: "rgba(255,255,255,0.92)",
+            color: "#000",
+            fontSize: "11px",
+            letterSpacing: "0.1em",
+            padding: "4px 12px",
+          }}
+        >
+          <span
+            className="inline-block rounded-full"
+            style={{ width: 6, height: 6, background: "#000" }}
+          />
+          Review capture
+        </div>
+      </div>
+
+      {/* Action bar — mirrors the ScanningPanel action bar layout */}
+      <div
+        className="flex items-center justify-between px-5 py-4 border-t"
+        style={{ borderColor: "rgba(255,255,255,0.06)" }}
+      >
+        <p className="font-sans text-[13px]" style={{ color: "rgba(255,255,255,0.45)" }}>
+          Does your ID look clear and readable?
+        </p>
+        <div className="flex items-center gap-3">
+          <button
+            id="review-confirm-btn"
+            onClick={onConfirm}
+            className="rounded-full font-sans font-semibold text-[13px] transition focus:outline-none focus-visible:ring-2 focus-visible:ring-white cursor-pointer"
+            style={{ padding: "9px 20px", background: "#fff", color: "#000" }}
+            onMouseEnter={(e) => {
+              (e.currentTarget as HTMLElement).style.transform = "scale(1.02)";
+            }}
+            onMouseLeave={(e) => ((e.currentTarget as HTMLElement).style.transform = "")}
+          >
+            Scan this
+          </button>
+          <button
+            id="review-retake-btn"
+            onClick={onRetake}
+            className="font-sans font-semibold text-[13px] transition focus:outline-none focus-visible:ring-2 focus-visible:ring-white cursor-pointer"
+            style={{
+              color: "rgba(255,255,255,0.6)",
+              textDecoration: "underline",
+              textUnderlineOffset: 3,
+            }}
+            onMouseEnter={(e) => ((e.currentTarget as HTMLElement).style.color = "#fff")}
+            onMouseLeave={(e) =>
+              ((e.currentTarget as HTMLElement).style.color = "rgba(255,255,255,0.6)")
+            }
+          >
+            Retake
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function GreetingCard({ name, onReset }: { name: string; onReset: () => void }) {
   return (
     <div className="rounded-[24px] overflow-hidden animate-fade-up" style={{ background: "#0a0a0a", border: "1px solid rgba(255,255,255,0.1)" }}>
@@ -947,7 +1095,7 @@ function GreetingCard({ name, onReset }: { name: string; onReset: () => void }) 
           <span style={{ color: "rgba(255,255,255,0.7)" }}>St. Joseph&apos;s College of Engineering and Technology, Palai</span>.
         </p>
         <p className="mt-2 font-sans text-[13px]" style={{ color: "rgba(255,255,255,0.3)" }}>
-          We're glad to have you with us.
+          We&apos;re glad to have you with us.
         </p>
 
         {/* ── Action buttons ── */}
