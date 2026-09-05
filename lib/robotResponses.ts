@@ -42,6 +42,8 @@ export const FILTER_LINES = {
   all: "Showing all Asthra events and workshops.",
   event: "Showing the competitions and events.",
   workshop: "Showing the available workshops.",
+  competition: "Showing the competitions and challenges.",
+  exhibition: "Showing the exhibitions and project showcases.",
 } as const;
 
 export type EventFilter = keyof typeof FILTER_LINES;
@@ -172,6 +174,8 @@ function findEventsByDepartment(query: string): EventItem[] {
   const q = query.toLowerCase();
   // Map common abbreviations to the department IDs used in data.ts.
   const aliasMap: Record<string, string> = {
+    er: "er",
+    "electronics and computer": "er",
     cse: "cse",
     "computer science": "cse",
     ece: "ece",
@@ -227,7 +231,7 @@ const ASK_INTENTS: Intent[] = [
       if (!event) {
         return `I couldn't find an event called ${name}. Try the event directory to browse the full list.`;
       }
-      return `${event.name} is scheduled for ${event.time}.`;
+      return `${event.name} is scheduled for ${event.time ?? event.date ?? "Asthra 11.0"}.`;
     },
   },
   {
@@ -247,7 +251,7 @@ const ASK_INTENTS: Intent[] = [
   },
   {
     // department-specific
-    pattern: /\b(cse|computer science|ece|eee|mech|civil|it)\b/i,
+    pattern: /\b(er|electronics and computer|cse|computer science|ece|eee|mech|civil|it)\b/i,
     build: (_m, query) => {
       const matches = findEventsByDepartment(query);
       if (!matches.length) return null;

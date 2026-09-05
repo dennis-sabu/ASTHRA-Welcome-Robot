@@ -99,6 +99,7 @@ body {
     transform: translateY(22px) scale(0.98);
     filter: blur(6px);
   }
+
   to {
     opacity: 1;
     transform: translateY(0) scale(1);
@@ -113,9 +114,11 @@ body {
     transform: translateY(22px) scale(0.95);
     filter: blur(6px);
   }
+
   60% {
     transform: translateY(-2px) scale(1.02);
   }
+
   to {
     opacity: 1;
     transform: translateY(0) scale(1);
@@ -129,6 +132,7 @@ body {
     opacity: 0;
     transform: translateY(-18px);
   }
+
   to {
     opacity: 1;
     transform: translateY(0);
@@ -141,6 +145,7 @@ body {
     opacity: 0;
     transform: translateY(14px);
   }
+
   to {
     opacity: 1;
     transform: translateY(0);
@@ -152,6 +157,7 @@ body {
   from {
     opacity: 0;
   }
+
   to {
     opacity: 1;
   }
@@ -163,6 +169,7 @@ body {
     opacity: 0;
     transform: translateY(-12px) scale(0.97);
   }
+
   to {
     opacity: 1;
     transform: translateY(0) scale(1);
@@ -175,6 +182,7 @@ body {
     opacity: 0;
     transform: translateX(-8px);
   }
+
   to {
     opacity: 1;
     transform: translateX(0);
@@ -187,6 +195,7 @@ body {
     opacity: 0;
     transform: translateY(8px);
   }
+
   to {
     opacity: 1;
     transform: translateY(0);
@@ -195,21 +204,43 @@ body {
 
 /* Float bob */
 @keyframes floatY {
-  0%, 100% { transform: translateY(0); }
-  50%       { transform: translateY(-6px); }
+
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+
+  50% {
+    transform: translateY(-6px);
+  }
 }
 
 /* Scan bar */
 @keyframes scan {
-  0%   { top: 6%; }
-  50%  { top: 94%; }
-  100% { top: 6%; }
+  0% {
+    top: 6%;
+  }
+
+  50% {
+    top: 94%;
+  }
+
+  100% {
+    top: 6%;
+  }
 }
 
 /* Waveform bars */
 @keyframes waveform {
-  0%, 100% { transform: scaleY(0.35); }
-  50%       { transform: scaleY(1); }
+
+  0%,
+  100% {
+    transform: scaleY(0.35);
+  }
+
+  50% {
+    transform: scaleY(1);
+  }
 }
 
 /* Robot HUD entry */
@@ -218,6 +249,7 @@ body {
     opacity: 0;
     transform: translateY(20px) scale(0.95);
   }
+
   to {
     opacity: 1;
     transform: translateY(0) scale(1);
@@ -226,14 +258,26 @@ body {
 
 /* Glow pulse */
 @keyframes glowPulse {
-  0%, 100% { box-shadow: 0 0 0 0 rgba(0, 212, 255, 0.35); }
-  50%       { box-shadow: 0 0 0 14px rgba(0, 212, 255, 0); }
+
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(0, 212, 255, 0.35);
+  }
+
+  50% {
+    box-shadow: 0 0 0 14px rgba(0, 212, 255, 0);
+  }
 }
 
 /* Spinner */
 @keyframes spin {
-  from { transform: rotate(0deg); }
-  to   { transform: rotate(360deg); }
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 /* ============================================================
@@ -265,7 +309,7 @@ body {
   animation: glowPulse 1.8s ease-in-out infinite;
 }
 
-.animate-waveform > span {
+.animate-waveform>span {
   animation: waveform 0.9s ease-in-out infinite;
   transform-origin: center;
 }
@@ -282,6 +326,7 @@ body {
    Reduced motion
    ============================================================ */
 @media (prefers-reduced-motion: reduce) {
+
   *,
   *::before,
   *::after {

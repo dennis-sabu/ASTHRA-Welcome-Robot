@@ -543,10 +543,10 @@ export default function ScanFlow() {
   }
 
   return (
-    <main className="min-h-screen w-full overflow-x-hidden text-white" style={{ background: "#000" }}>
-      <header
+    <main className="relative min-h-screen w-full overflow-x-hidden text-white">
+            <header
         className="sticky top-0 z-20 flex items-center justify-between border-b px-6 py-4"
-        style={{ background: "#000", borderColor: "rgba(255,255,255,0.08)" }}
+        style={{ background: "rgba(0,0,0,0.7)", backdropFilter: "blur(12px)", borderColor: "rgba(255,255,255,0.08)" }}
       >
         <Link
           href="/"
