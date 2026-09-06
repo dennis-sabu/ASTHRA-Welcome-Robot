@@ -97,7 +97,7 @@ export default function EventsBrowser() {
             {/* ── Nav bar ── */}
       <header
         className="sticky top-0 z-20 flex items-center justify-between border-b px-6 py-4"
-        style={{ background: "rgba(0,0,0,0.7)", backdropFilter: "blur(12px)", borderColor: "rgba(255,255,255,0.08)" }}
+        style={{ background: "rgba(15, 15, 15, 0.2)", backdropFilter: "blur(20px)", borderColor: "rgba(255,255,255,0.1)" }}
       >
         <Link
           href="/"
@@ -170,7 +170,7 @@ export default function EventsBrowser() {
           {/* Search bar */}
           <div
             className="mt-8 flex flex-col sm:flex-row gap-2 items-stretch rounded-full p-2"
-            style={{ background: "#111", border: "1px solid rgba(255,255,255,0.08)" }}
+            style={{ background: "rgba(15, 15, 15, 0.2)", backdropFilter: "blur(20px)", border: "1px solid rgba(255,255,255,0.1)" }}
           >
             <div className="relative flex-1">
               <SearchIconAbsolute />
@@ -252,8 +252,9 @@ export default function EventsBrowser() {
                       aria-pressed={isActive}
                       className="group w-full text-left rounded-[20px] p-5 transition focus:outline-none focus-visible:ring-2 focus-visible:ring-white cursor-pointer flex flex-col justify-between"
                       style={{
-                        background: "#0a0a0a",
-                        border: `1px solid rgba(255,255,255,0.08)`,
+                        background: "rgba(15, 15, 15, 0.2)",
+                        backdropFilter: "blur(20px)",
+                        border: `1px solid rgba(255,255,255,0.1)`,
                       }}
                       onMouseEnter={(el) => {
                         (el.currentTarget as HTMLElement).style.borderColor = "rgba(255,255,255,0.22)";
@@ -361,7 +362,7 @@ export default function EventsBrowser() {
       {selected && selectedDept && (
         <div
           className="fixed inset-0 z-40 flex items-center justify-center p-4 sm:p-8"
-          style={{ background: "rgba(0,0,0,0.75)", backdropFilter: "blur(10px)" }}
+          style={{ background: "rgba(15, 15, 15, 0.2)", backdropFilter: "blur(20px)", border: "1px solid rgba(255,255,255,0.1)" }}
           onClick={() => setSelectedId(null)}
           role="dialog"
           aria-modal="true"
@@ -373,7 +374,7 @@ export default function EventsBrowser() {
             style={{
               maxWidth: 900,
               height: "min(88vh, 700px)",
-              background: "#0a0a0a",
+              background: "rgba(15, 15, 15, 0.2)", backdropFilter: "blur(20px)", border: "1px solid rgba(255,255,255,0.1)",
               border: "1px solid rgba(255,255,255,0.12)",
               boxShadow: "0 48px 120px rgba(0,0,0,0.85)",
             }}
@@ -450,7 +451,7 @@ export default function EventsBrowser() {
         style={{ borderColor: "rgba(255,255,255,0.06)", color: "rgba(255,255,255,0.3)" }}
       >
         <div className="max-w-[1200px] mx-auto">
-          © {new Date().getFullYear()} Asthra Tech Fest · SJCET Palai
+          © {new Date().getFullYear()} Asthra Tech Fest · Electronics and Computer Engineering Department
         </div>
       </footer>
 
@@ -458,7 +459,7 @@ export default function EventsBrowser() {
       {qrEvent && qrEvent.registrationUrl && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center p-4"
-          style={{ background: "rgba(0,0,0,0.80)", backdropFilter: "blur(6px)" }}
+          style={{ background: "rgba(15, 15, 15, 0.2)", backdropFilter: "blur(20px)", border: "1px solid rgba(255,255,255,0.1)" }}
           onClick={() => setQrEvent(null)}
           role="dialog"
           aria-modal="true"
@@ -467,7 +468,7 @@ export default function EventsBrowser() {
           {/* Modal card — stop click from bubbling to backdrop */}
           <div
             className="relative w-full max-w-[340px] rounded-[24px] p-7 flex flex-col items-center gap-5"
-            style={{ background: "#0f0f0f", border: "1px solid rgba(255,255,255,0.12)", boxShadow: "0 32px 80px rgba(0,0,0,0.7)" }}
+            style={{ background: "rgba(15, 15, 15, 0.2)", backdropFilter: "blur(20px)", border: "1px solid rgba(255,255,255,0.12)", boxShadow: "0 32px 80px rgba(0,0,0,0.7)" }}
             onClick={(e) => e.stopPropagation()}
           >
             {/* Close button */}
@@ -527,7 +528,7 @@ function EmptyDetail() {
     <div className="flex flex-col items-center justify-center text-center h-full py-16">
       <div
         className="flex items-center justify-center rounded-full mb-5"
-        style={{ width: 52, height: 52, background: "#111", border: "1px solid rgba(255,255,255,0.08)" }}
+        style={{ width: 52, height: 52, background: "rgba(15, 15, 15, 0.2)", backdropFilter: "blur(20px)", border: "1px solid rgba(255,255,255,0.08)" }}
       >
         <PinIcon />
       </div>
@@ -649,7 +650,7 @@ function EventDetail({
         {event.room && (
           <div
             className="rounded-[14px] p-4"
-            style={{ background: "#111", border: "1px solid rgba(255,255,255,0.07)" }}
+            style={{ background: "rgba(15, 15, 15, 0.2)", backdropFilter: "blur(20px)", border: "1px solid rgba(255,255,255,0.07)" }}
           >
             <p
               className="font-sans font-semibold uppercase tracking-[0.1em] mb-1"
@@ -739,7 +740,7 @@ function MetaRow({
   return (
     <div
       className="flex items-center gap-3 rounded-[14px] p-4"
-      style={{ background: "#111", border: "1px solid rgba(255,255,255,0.07)" }}
+      style={{ background: "rgba(17, 17, 17, 0.7)", backdropFilter: "blur(10px)", border: "1px solid rgba(255,255,255,0.07)" }}
     >
       <div
         className="shrink-0 flex items-center justify-center rounded-full"

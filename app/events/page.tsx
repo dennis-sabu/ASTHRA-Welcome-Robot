@@ -1,5 +1,6 @@
 import { Suspense } from "react";
 import EventsBrowser from "./EventsBrowser";
+import PixelBlast from "@/app/components/PixelBlast";
 
 export const metadata = {
   title: "Explore Events · Asthra",
@@ -16,8 +17,19 @@ function EventsFallback() {
 
 export default function EventsPage() {
   return (
-    <Suspense fallback={<EventsFallback />}>
-      <EventsBrowser />
-    </Suspense>
+    <div className="relative z-10 min-h-screen">
+      <div className="fixed inset-0 z-0 pointer-events-none">
+        <PixelBlast
+          variant="circle"
+          color="#22d3ee"
+          transparent
+          speed={0.3}
+          pixelSize={4}
+        />
+      </div>
+      <Suspense fallback={<EventsFallback />}>
+        <EventsBrowser />
+      </Suspense>
+    </div>
   );
 }

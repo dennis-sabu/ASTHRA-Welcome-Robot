@@ -42,9 +42,10 @@ export default function RobotHud() {
         aria-label="Asthra assistant"
       >
         <div
-          className="flex items-end gap-3 px-3 py-3 rounded-[20px] backdrop-blur-md"
+          className="flex items-end gap-3 px-3 py-3 rounded-[20px]"
           style={{
-            background: "rgba(10,10,10,0.88)",
+            background: "rgba(15, 15, 15, 0.2)",
+            backdropFilter: "blur(20px)",
             border: "1px solid rgba(255,255,255,0.1)",
             boxShadow: "0 8px 40px rgba(0,0,0,0.5)",
           }}
@@ -376,9 +377,10 @@ function AskRobotPanel({ onClose }: { onClose: () => void }) {
     >
       <form
         onSubmit={handleSubmit}
-        className="rounded-[20px] p-4 backdrop-blur-md"
+        className="rounded-[20px] p-4"
         style={{
-          background: "rgba(10,10,10,0.95)",
+          background: "rgba(15, 15, 15, 0.2)",
+          backdropFilter: "blur(20px)",
           border: "1px solid rgba(255,255,255,0.1)",
           boxShadow: "0 8px 40px rgba(0,0,0,0.6)",
         }}
@@ -414,7 +416,8 @@ function AskRobotPanel({ onClose }: { onClose: () => void }) {
           placeholder="Try: where is Robo Race?"
           className="w-full rounded-[12px] font-sans text-[14px] text-white placeholder:text-white/40 focus:outline-none focus:ring-2 focus:ring-white"
           style={{
-            background: "#111",
+            background: "rgba(15, 15, 15, 0.2)",
+            backdropFilter: "blur(20px)",
             border: "1px solid rgba(255,255,255,0.1)",
             padding: "10px 14px",
           }}

@@ -21,7 +21,7 @@ const mono = JetBrains_Mono({
 export const metadata: Metadata = {
   title: "Intelligence Designed To Evolve",
   description:
-    "Asthra 11.0 — the premier AI, robotics, and engineering technology festival at SJCET Palai. Scan your ID or explore all events.",
+    "Asthra 11.0 — the premier AI, robotics, and engineering technology festival at Electronics and Computer Engineering Department. Scan your ID or explore all events.",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
@@ -58,7 +58,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
           referrerPolicy="no-referrer"
         />
       </head>
-      <body className="min-h-full flex flex-col bg-[#000] text-white">
+      <body className="min-h-full flex flex-col text-white">
         <RobotVoiceProvider>
           {/* GlobalActionBridge runs at the root so every page picks up
               data-robot-action clicks without explicit wiring. */}

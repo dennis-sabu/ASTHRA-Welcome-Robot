@@ -546,7 +546,7 @@ export default function ScanFlow() {
     <main className="relative min-h-screen w-full overflow-x-hidden text-white">
             <header
         className="sticky top-0 z-20 flex items-center justify-between border-b px-6 py-4"
-        style={{ background: "rgba(0,0,0,0.7)", backdropFilter: "blur(12px)", borderColor: "rgba(255,255,255,0.08)" }}
+        style={{ background: "rgba(15, 15, 15, 0.2)", backdropFilter: "blur(20px)", borderColor: "rgba(255,255,255,0.1)" }}
       >
         <Link
           href="/"
@@ -600,7 +600,7 @@ export default function ScanFlow() {
           ) : (
             <div
               className="rounded-[24px] overflow-hidden"
-              style={{ background: "#0a0a0a", border: "1px solid rgba(255,255,255,0.08)" }}
+              style={{ background: "rgba(15, 15, 15, 0.2)", backdropFilter: "blur(20px)", border: "1px solid rgba(255,255,255,0.1)" }}
             >
               {phase === "ready" && <ReadyPanel onStart={openCamera} />}
 
@@ -1059,7 +1059,7 @@ function ReviewPanel({
 
 function GreetingCard({ name, onReset }: { name: string; onReset: () => void }) {
   return (
-    <div className="rounded-[24px] overflow-hidden animate-fade-up" style={{ background: "#0a0a0a", border: "1px solid rgba(255,255,255,0.1)" }}>
+    <div className="rounded-[24px] overflow-hidden animate-fade-up" style={{ background: "rgba(15, 15, 15, 0.2)", backdropFilter: "blur(20px)", border: "1px solid rgba(255,255,255,0.1)" }}>
       <div className="px-8 sm:px-12 py-14 sm:py-18 text-center">
 
         {/* ── Confirmation badge ── */}

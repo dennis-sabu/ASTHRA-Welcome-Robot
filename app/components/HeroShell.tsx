@@ -227,8 +227,9 @@ function SiteHeader() {
           <div
             className="sm:hidden fixed inset-0"
             style={{
-              background: "rgba(0,0,0,0.62)",
-              backdropFilter: "blur(6px)",
+              background: "rgba(15, 15, 15, 0.2)",
+              backdropFilter: "blur(20px)",
+              border: "1px solid rgba(255,255,255,0.1)",
               animation: "overlayIn 0.28s ease both",
               zIndex: 40,
             }}
@@ -512,7 +513,7 @@ function TrustRow() {
             color: "var(--trust-text)",
           }}
         >
-          SJCET Palai · Electronics and Computer Department.
+          Electronics and Computer Engineering Department.
         </span>
       </div>
     </div>
