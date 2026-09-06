@@ -1,8 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useRobotVoice } from "./RobotVoice";
 import { answerAskRobot } from "@/lib/robotResponses";
+import { events } from "@/lib/data";
 
 /**
  * RobotHud — the assistant's dialogue bubble.
@@ -348,6 +349,20 @@ function AskRobotPanel({ onClose }: { onClose: () => void }) {
   const { dispatch } = useRobotVoice();
   const [query, setQuery] = useState("");
 
+  const { suggestions, randomEventName } = useMemo(() => {
+    const randomEvent = events[Math.floor(Math.random() * events.length)];
+    const name = randomEvent?.name ?? "Robo Race";
+    return {
+      randomEventName: name,
+      suggestions: [
+        "WHAT EVENTS ARE AVAILABLE?",
+        "SHOW ALL WORKSHOPS",
+        "SHOW ALL COMPETITIONS",
+        `WHERE IS ${name.toUpperCase()}?`,
+      ],
+    };
+  }, []);
+
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     const trimmed = query.trim();
@@ -361,13 +376,6 @@ function AskRobotPanel({ onClose }: { onClose: () => void }) {
       dispatch({ type: "ask-robot-answer", text: answer });
     }, 320);
   }
-
-  const suggestions = [
-    "What is Robo Race?",
-    "Where is the AI/ML Workshop?",
-    "List events",
-    "When is Cipher CTF?",
-  ];
 
   return (
     <div
@@ -413,7 +421,7 @@ function AskRobotPanel({ onClose }: { onClose: () => void }) {
           autoFocus
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          placeholder="Try: where is Robo Race?"
+          placeholder={`Try: where is ${randomEventName}?`}
           className="w-full rounded-[12px] font-sans text-[14px] text-white placeholder:text-white/40 focus:outline-none focus:ring-2 focus:ring-white"
           style={{
             background: "rgba(15, 15, 15, 0.2)",

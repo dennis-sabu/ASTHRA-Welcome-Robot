@@ -81,7 +81,7 @@ export const ASK_ROBOT_LINES = {
   idle: "How can I help?",
   thinking: "Thinking…",
   empty:
-    "I didn't catch that. Try asking about an event, a venue, or say list events.",
+    "I couldn't find that event in the current Asthra 11.0 event list. Try searching for another event.",
 } as const;
 
 /* ────────────────────────── Event explanation ────────────────────────── */
@@ -196,6 +196,34 @@ function findEventsByDepartment(query: string): EventItem[] {
 
 const ASK_INTENTS: Intent[] = [
   {
+    // "list events" / "what events" / "show me events"
+    pattern: /\b(list|show|what)\b.*\bevents?\b/i,
+    build: () => {
+      const names = ALL_EVENTS.map((e) => e.name).join(", ");
+      return `There are ${ALL_EVENTS.length} events and workshops at Asthra 11.0: ${names}. Open the event directory to explore details.`;
+    },
+  },
+  {
+    // "list workshops"
+    pattern: /\b(list|show|what)\b.*\bworkshops?\b/i,
+    build: () => {
+      const workshops = ALL_EVENTS.filter((e) => e.type === "workshop");
+      if (!workshops.length) return "There are currently no workshops listed.";
+      const names = workshops.map((e) => e.name).join(", ");
+      return `I found ${workshops.length} workshops: ${names}. Switch the directory filter to workshops to see them.`;
+    },
+  },
+  {
+    // "list competitions"
+    pattern: /\b(list|show|what)\b.*\bcompetitions?\b/i,
+    build: () => {
+      const comps = ALL_EVENTS.filter((e) => e.type === "competition");
+      if (!comps.length) return "There are currently no competitions listed.";
+      const names = comps.map((e) => e.name).join(", ");
+      return `I found ${comps.length} competitions: ${names}. Switch the directory filter to competitions to see them.`;
+    },
+  },
+  {
     // "what is X" / "tell me about X" / "what's X"
     pattern: /\b(what(?:'s| is)?|tell me about|describe|explain)\b[\s:]+(.+)/i,
     build: (_m, query) => {
@@ -203,7 +231,7 @@ const ASK_INTENTS: Intent[] = [
       if (!name) return null;
       const event = findEventByName(name);
       if (!event) {
-        return `I couldn't find an event called ${name}. Try the event directory to browse the full list.`;
+        return `I couldn't find an event called ${name} in the current Asthra 11.0 event list. Try searching for another event.`;
       }
       return getEventExplanationLine(event);
     },
@@ -216,7 +244,7 @@ const ASK_INTENTS: Intent[] = [
       if (!name) return null;
       const event = findEventByName(name);
       if (!event) {
-        return `I couldn't find an event called ${name}. Try the event directory to browse the full list.`;
+        return `I couldn't find an event called ${name} in the current Asthra 11.0 event list. Try searching for another event.`;
       }
       return formatLocation(event);
     },
@@ -229,24 +257,46 @@ const ASK_INTENTS: Intent[] = [
       if (!name) return null;
       const event = findEventByName(name);
       if (!event) {
-        return `I couldn't find an event called ${name}. Try the event directory to browse the full list.`;
+        return `I couldn't find an event called ${name} in the current Asthra 11.0 event list. Try searching for another event.`;
       }
       return `${event.name} is scheduled for ${event.time ?? event.date ?? "Asthra 11.0"}.`;
     },
   },
   {
-    // "list events" / "what events" / "show me events"
-    pattern: /\b(list|show|what)\b.*\bevents?\b/i,
-    build: () => {
-      return `There are ${ALL_EVENTS.length} events and workshops across multiple departments. Open the event directory and I'll help you explore them.`;
+    // Registration: "How to register for X", "Registration for X"
+    pattern: /\b(register|registration)\b/i,
+    build: (_m, query) => {
+      const name = extractNameAfterQuestion(query);
+      if (!name) {
+        return "You can register for most events via the registration links provided in the event directory.";
+      }
+      const event = findEventByName(name);
+      if (!event) {
+        return `I couldn't find ${name} in the event list. Please check the event directory for registration details.`;
+      }
+      if (!event.registrationRequired) {
+        return `Registration is not required for ${event.name}. Feel free to join!`;
+      }
+      return `Registration is required for ${event.name}. You can register here: ${event.registrationUrl ?? "link not available"}.`;
     },
   },
   {
-    // "list workshops"
-    pattern: /\b(list|show|what)\b.*\bworkshops?\b/i,
-    build: () => {
-      const count = ALL_EVENTS.filter((e) => e.type === "workshop").length;
-      return `There are ${count} workshops at Asthra. Switch the directory filter to workshops to see them.`;
+    // Coordinators: "Who is coordinating X", "Contact for X"
+    pattern: /\b(coordinator|contact|managing)\b/i,
+    build: (_m, query) => {
+      const name = extractNameAfterQuestion(query);
+      if (!name) {
+        return "Please specify an event if you'd like to find its coordinator.";
+      }
+      const event = findEventByName(name);
+      if (!event) {
+        return `I couldn't find ${name} in the event list. Try the event directory for contact information.`;
+      }
+      if (!event.coordinators || event.coordinators.length === 0) {
+        return `Coordinator details for ${event.name} are not available at the moment.`;
+      }
+      const list = event.coordinators.map((c) => `${c.name}${c.phone ? ` (${c.phone})` : ""}`).join(", ");
+      return `The coordinator(s) for ${event.name} are ${list}.`;
     },
   },
   {
@@ -269,7 +319,7 @@ const ASK_INTENTS: Intent[] = [
 function extractNameAfterQuestion(query: string): string | null {
   const cleaned = query
     .replace(
-      /\b(what(?:'s| is)?|tell me about|describe|explain|where(?:'s| is)?|when is|what time is)\b/gi,
+      /\b(what(?:'s| is)?|tell me about|describe|explain|where(?:'s| is)?|when is|what time is|register for|registration for|coordinator for|contact for|who is managing)\b/gi,
       "",
     )
     .replace(/[?!.]/g, "")
