@@ -16,6 +16,8 @@ export default function ScanPage() {
           transparent
           speed={0.3}
           pixelSize={4}
+          className="w-full h-full"
+          style={{}}
         />
       </div>
       <ScanFlow />

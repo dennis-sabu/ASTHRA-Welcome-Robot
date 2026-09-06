@@ -25,6 +25,8 @@ export default function EventsPage() {
           transparent
           speed={0.3}
           pixelSize={4}
+          className="w-full h-full"
+          style={{}}
         />
       </div>
       <Suspense fallback={<EventsFallback />}>
