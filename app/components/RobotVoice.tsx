@@ -61,6 +61,7 @@ import {
 } from "@/lib/robotResponses";
 import type { EventItem } from "@/lib/data";
 
+
 export type RobotState = "idle" | "thinking" | "speaking";
 
 export type RobotContext = {
@@ -166,7 +167,6 @@ export function RobotVoiceProvider({ children }: { children: React.ReactNode }) 
 
   const stop = useCallback(() => {
     if (typeof window === "undefined") return;
-    // Bump the request ID so any in-flight onstart/onend callbacks drop.
     requestRef.current++;
     speechRequestId++;
     window.speechSynthesis?.cancel();
@@ -187,7 +187,6 @@ export function RobotVoiceProvider({ children }: { children: React.ReactNode }) 
       const trimmed = text.trim();
       if (!trimmed || typeof window.speechSynthesis === "undefined") return;
 
-      // Cancel previous utterance and invalidate any in-flight callbacks.
       window.speechSynthesis.cancel();
       speechRequestId++;
       requestRef.current = speechRequestId;
@@ -224,49 +223,6 @@ export function RobotVoiceProvider({ children }: { children: React.ReactNode }) 
 
       window.speechSynthesis.speak(utterance);
       setStatus("speaking");
-
-      // Sci-fi carrier tone, same trick as before.
-      if (typeof window.AudioContext !== "undefined") {
-        try {
-          if (!audioCtxRef.current) {
-            audioCtxRef.current = new AudioContext();
-          }
-          const ctx = audioCtxRef.current;
-          if (ctx.state === "suspended") {
-            ctx.resume().catch(() => {});
-          }
-          const osc = ctx.createOscillator();
-          const gain = ctx.createGain();
-          osc.type = "sine";
-          osc.frequency.value = 110;
-          gain.gain.value = 0.012;
-          osc.connect(gain).connect(ctx.destination);
-          osc.start();
-          const cleanup = () => {
-            try {
-              osc.stop();
-              osc.disconnect();
-              gain.disconnect();
-            } catch {
-              /* already stopped */
-            }
-          };
-          utterance.onend = () => {
-            cleanup();
-            if (requestRef.current !== myRequest) return;
-            setStatus("idle");
-            setState("idle");
-          };
-          utterance.onerror = () => {
-            cleanup();
-            if (requestRef.current !== myRequest) return;
-            setStatus("idle");
-            setState("idle");
-          };
-        } catch {
-          /* Web Audio unavailable */
-        }
-      }
     },
     [],
   );

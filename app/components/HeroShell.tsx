@@ -15,7 +15,8 @@ import { useOneShotWelcome } from "./useOneShotWelcome";
  * Robot welcome fires once per session via useOneShotWelcome.
  * Navigation links carry data-robot-action for GlobalActionBridge.
  */
-export default function HeroShell() {
+export default function 
+HeroShell() {
   useOneShotWelcome();
 
   return (
