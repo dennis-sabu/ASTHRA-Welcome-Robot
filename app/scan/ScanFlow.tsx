@@ -5,7 +5,6 @@ import Link from "next/link";
 import { useRobotVoice } from "../components/RobotVoice";
 
 // ── API configuration ──────────────────────────────────────────────────────
-// .env.local provides ONLY the base URL — never include "/scan-id" here.
 const API_URL = process.env.NEXT_PUBLIC_SCANNER_API_URL ?? "http://127.0.0.1:8000";
 
 // ── FastAPI response shape ─────────────────────────────────────────────────
@@ -18,7 +17,6 @@ interface ScanApiResponse {
 }
 
 // ── Staff image mapping (SJCET Palai — ER Faculty & Leadership) ───────────
-// Maps normalized name fragments → public/staff/<filename>
 const STAFF_IMAGES: Record<string, string> = {
   "ancy mathew":       "/staff/Ancy_Mathew.jpg",
   "ashitha jose":      "/staff/Ashitha_Jose.jpeg",
@@ -58,21 +56,20 @@ const STAFF_IMAGES: Record<string, string> = {
   "vice principal":    "/staff/Vice-Principal_Rev_Dr_Joseph_Purayidathil.jpg",
 };
 
-/** Try to find a staff photo for the given scanned name. */
+// Pre-sort keys by length (descending) once for efficient lookup
+const SORTED_STAFF_KEYS = Object.keys(STAFF_IMAGES).sort((a, b) => b.length - a.length);
+
 function lookupStaffImage(scannedName: string): string | null {
   const lower = scannedName.toLowerCase().trim();
-  // Direct substring match (longest key wins)
-  let bestKey = "";
-  for (const key of Object.keys(STAFF_IMAGES)) {
-    if (lower.includes(key) && key.length > bestKey.length) {
-      bestKey = key;
-    }
-  }
+
+  // Fast match: longest key wins
+  const bestKey = SORTED_STAFF_KEYS.find(key => lower.includes(key));
   if (bestKey) return STAFF_IMAGES[bestKey];
+
   // Fallback: match individual tokens against keys
-  for (const key of Object.keys(STAFF_IMAGES)) {
+  for (const key of SORTED_STAFF_KEYS) {
     const tokens = key.split(" ");
-    if (tokens.some((t) => lower.includes(t) && t.length > 3)) {
+    if (tokens.some((t) => t.length > 3 && lower.includes(t))) {
       return STAFF_IMAGES[key];
     }
   }
@@ -80,9 +77,8 @@ function lookupStaffImage(scannedName: string): string | null {
 }
 
 // ── State machine phases ───────────────────────────────────────────────────
-type Phase = "ready" | "camera" | "processing" | "review" | "detected" | "error";
+type Phase = "idle" | "capturing" | "review" | "uploading" | "processing" | "success" | "error";
 
-// ── Processing status labels ───────────────────────────────────────────────
 const PROCESSING_STEPS = [
   "Reading your ID",
   "Analyzing details",
@@ -90,11 +86,39 @@ const PROCESSING_STEPS = [
   "Identifying visitor",
 ] as const;
 
-// ── ID card aspect ratio (ISO/IEC 7810 ID-1: 85.6 × 53.98 mm) ─────────────
-const CARD_ASPECT = 85.6 / 53.98; // ≈ 1.586
-
-// ── Timeout for the FastAPI call ──────────────────────────────────────────
+const CARD_ASPECT = 85.6 / 53.98;
 const SCAN_TIMEOUT_MS = 90_000;
+
+/**
+ * Resizes and compresses the captured ID image for optimal upload speed and OCR quality.
+ */
+async function prepareImageForUpload(sourceCanvas: HTMLCanvasElement): Promise<Blob> {
+  const maxW = 1280;
+  let width = sourceCanvas.width;
+  let height = sourceCanvas.height;
+
+  if (width > maxW) {
+    const scale = maxW / width;
+    width = maxW;
+    height = Math.round(height * scale);
+  }
+
+  const offscreen = document.createElement("canvas");
+  offscreen.width = width;
+  offscreen.height = height;
+  const ctx = offscreen.getContext("2d");
+  if (!ctx) throw new Error("Offscreen canvas context failed");
+
+  ctx.drawImage(sourceCanvas, 0, 0, sourceCanvas.width, sourceCanvas.height, 0, 0, width, height);
+
+  return new Promise((resolve, reject) => {
+    offscreen.toBlob(
+      (blob) => (blob ? resolve(blob) : reject(new Error("Blob conversion failed"))),
+      "image/jpeg",
+      0.80 // Reduced from 0.94 to balance size and OCR quality
+    );
+  });
+}
 
 export default function ScanFlow() {
   const videoRef = useRef<HTMLVideoElement | null>(null);
@@ -105,11 +129,12 @@ export default function ScanFlow() {
   const startingRef = useRef(false);
   const resetFlagRef = useRef(false);
   const abortRef = useRef<AbortController | null>(null);
-  // Holds the current object URL for the review preview so it can be revoked
-  // from anywhere (retake, confirm, reset, unmount) without a stale-closure risk.
   const capturedUrlRef = useRef<string | null>(null);
 
-  const [phase, setPhase] = useState<Phase>("ready");
+  // Performance timing markers
+  const timers = useRef<Record<string, number>>({});
+
+  const [phase, setPhase] = useState<Phase>("idle");
   const [flash, setFlash] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [recognizedName, setRecognizedName] = useState<string | null>(null);
@@ -155,12 +180,11 @@ export default function ScanFlow() {
     setError(null);
     setRecognizedName(null);
     setVideoReady(false);
-    setPhase("camera");
+    setPhase("capturing");
     dispatch({ type: "scan-start" });
 
     try {
       stopStream();
-
       const stream = await navigator.mediaDevices.getUserMedia({
         video: {
           facingMode: "environment",
@@ -169,7 +193,6 @@ export default function ScanFlow() {
         },
         audio: false,
       });
-
       streamRef.current = stream;
       attachStream(stream);
     } catch (err) {
@@ -182,10 +205,8 @@ export default function ScanFlow() {
     }
   }
 
-  // Re-attach the still-running stream when we return to the camera panel
-  // after a failed scan — no new getUserMedia() permission prompt needed.
   useEffect(() => {
-    if (phase !== "camera") return;
+    if (phase !== "capturing") return;
     const stream = streamRef.current;
     const video = videoRef.current;
     if (!stream || !video) return;
@@ -199,7 +220,6 @@ export default function ScanFlow() {
       abortRef.current?.abort("unmount");
       stopStream();
       stop();
-      // Revoke any lingering object URL to avoid memory leaks on unmount
       if (capturedUrlRef.current) {
         URL.revokeObjectURL(capturedUrlRef.current);
         capturedUrlRef.current = null;
@@ -207,11 +227,6 @@ export default function ScanFlow() {
     };
   }, [stop, stopStream]);
 
-  /**
-   * Lightweight sanity check on the cropped image data before sending to backend.
-   * Rejects near-black/blown-out frames and mostly-flat color regions.
-   * Thresholds chosen to filter obvious bad captures without false positives on real IDs.
-   */
   function validateCapturedFrame(
     ctx: CanvasRenderingContext2D,
     width: number,
@@ -220,24 +235,16 @@ export default function ScanFlow() {
     const imageData = ctx.getImageData(0, 0, width, height);
     const data = imageData.data;
     const pixelCount = width * height;
-    
-    // Compute average luminance (rough brightness check)
+
     let sum = 0;
     for (let i = 0; i < data.length; i += 4) {
-      // Luminance approximation: 0.299R + 0.587G + 0.114B
       sum += 0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2];
     }
     const avgBrightness = sum / pixelCount;
 
-    // Reject frames that are too dark (< 20) or blown out (> 245)
-    if (avgBrightness < 20) {
-      return { valid: false, reason: "Too dark", brightness: avgBrightness };
-    }
-    if (avgBrightness > 245) {
-      return { valid: false, reason: "Overexposed", brightness: avgBrightness };
-    }
+    if (avgBrightness < 20) return { valid: false, reason: "Too dark", brightness: avgBrightness };
+    if (avgBrightness > 245) return { valid: false, reason: "Overexposed", brightness: avgBrightness };
 
-    // Compute stddev of luminance (rough "is there content" check)
     let variance = 0;
     for (let i = 0; i < data.length; i += 4) {
       const lum = 0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2];
@@ -246,28 +253,16 @@ export default function ScanFlow() {
     }
     const stddev = Math.sqrt(variance / pixelCount);
 
-    // Reject mostly-flat frames (stddev < 12 means almost no variation, likely a blank wall)
-    if (stddev < 12) {
-      return { valid: false, reason: "No content detected", brightness: avgBrightness, stddev };
-    }
+    if (stddev < 12) return { valid: false, reason: "No content detected", brightness: avgBrightness, stddev };
 
     return { valid: true, brightness: avgBrightness, stddev };
   }
 
-  /**
-   * Map the visible card-guide rectangle (CSS/display coordinates) into the
-   * actual video pixel coordinates, accounting for `object-fit: cover`
-   * scaling, centering and any letterboxing.
-   */
-  function computeSourceRect(
-    vw: number,
-    vh: number
-  ): { sx: number; sy: number; sw: number; sh: number } {
+  function computeSourceRect(vw: number, vh: number): { sx: number; sy: number; sw: number; sh: number } {
     const container = containerRef.current;
     const guide = guideRef.current;
 
     if (!container || !guide) {
-      // Fallback: centered card-sized region (88% height)
       const sh = Math.min(vh * 0.88, vh);
       const sw = Math.min(sh * CARD_ASPECT, vw);
       return {
@@ -280,9 +275,6 @@ export default function ScanFlow() {
 
     const cRect = container.getBoundingClientRect();
     const gRect = guide.getBoundingClientRect();
-
-    // object-fit: cover — the video is scaled to fill the container and
-    // centered, with the overflow cropped evenly on both sides.
     const scale = Math.max(cRect.width / vw, cRect.height / vh);
     const dispW = vw * scale;
     const dispH = vh * scale;
@@ -294,28 +286,19 @@ export default function ScanFlow() {
     const sw0 = gRect.width / scale;
     const sh0 = gRect.height / scale;
 
-    // Tightened margin (3% on each side) — enough to avoid clipping edges, but puts
-    // maximum pixel budget on the card text itself per backend's fixed-budget OCR model.
     const marginX = sw0 * 0.03;
     const marginY = sh0 * 0.03;
 
-    const sx = Math.max(0, Math.round(sx0 - marginX));
-    const sy = Math.max(0, Math.round(sy0 - marginY));
-    const sxEnd = Math.min(vw, Math.round(sx0 + sw0 + marginX));
-    const syEnd = Math.min(vh, Math.round(sy0 + sh0 + marginY));
-
     return {
-      sx,
-      sy,
-      sw: Math.max(10, sxEnd - sx),
-      sh: Math.max(10, syEnd - sy),
+      sx: Math.max(0, Math.round(sx0 - marginX)),
+      sy: Math.max(0, Math.round(sy0 - marginY)),
+      sw: Math.max(10, Math.min(vw, Math.round(sx0 + sw0 + marginX)) - Math.max(0, Math.round(sx0 - marginX))),
+      sh: Math.max(10, Math.min(vh, Math.round(sy0 + sh0 + marginY)) - Math.max(0, Math.round(sy0 - marginY))),
     };
   }
 
   const captureAndSend = async () => {
-    // Scanning lock — protects against double clicks / stale handlers.
     if (isScanningRef.current) return;
-
     const video = videoRef.current;
     if (!video || !streamRef.current || !videoReady) return;
 
@@ -330,139 +313,76 @@ export default function ScanFlow() {
     resetFlagRef.current = false;
     setError(null);
 
-    // Brief capture flash.
+    // [PERF] Start capture timing
+    timers.current.tCaptureStart = performance.now();
+
     setFlash(true);
     await new Promise((r) => setTimeout(r, 160));
     setFlash(false);
 
     const { sx, sy, sw, sh } = computeSourceRect(vw, vh);
-
     const canvas = document.createElement("canvas");
-    canvas.width = Math.max(2, Math.round(sw));
-    canvas.height = Math.max(2, Math.round(sh));
+    canvas.width = sw;
+    canvas.height = sh;
     const ctx = canvas.getContext("2d");
     if (!ctx) {
       isScanningRef.current = false;
       return;
     }
 
-    if (canvas.width < 100 || canvas.height < 100) {
-      isScanningRef.current = false;
-      setError("Invalid capture dimensions. Please hold the card inside the guide frame.");
-      return;
-    }
-
-    // Natural orientation — matches the preview. No mirroring applied.
     ctx.drawImage(video, sx, sy, sw, sh, 0, 0, canvas.width, canvas.height);
+    timers.current.tCaptureEnd = performance.now();
 
-    // Lightweight pre-send sanity check on the cropped region
     const validation = validateCapturedFrame(ctx, canvas.width, canvas.height);
-    
-    if (process.env.NODE_ENV !== "production") {
-      console.log("Camera:", JSON.stringify({
-        videoWidth: vw,
-        videoHeight: vh,
-        readyState: video.readyState,
-      }, null, 2));
-      console.log("Crop:", JSON.stringify({
-        sourceCropX: sx,
-        sourceCropY: sy,
-        sourceCropWidth: sw,
-        sourceCropHeight: sh,
-        canvasWidth: canvas.width,
-        canvasHeight: canvas.height,
-        cropMarginPercent: 3,
-      }, null, 2));
-      console.log("Pre-send validation:", JSON.stringify({
-        valid: validation.valid,
-        reason: validation.reason,
-        avgBrightness: validation.brightness?.toFixed(1),
-        stddev: validation.stddev?.toFixed(1),
-        thresholds: { minBrightness: 20, maxBrightness: 245, minStddev: 12 },
-      }, null, 2));
-    }
-
     if (!validation.valid) {
       isScanningRef.current = false;
       setError(`Let's try that again — ${validation.reason?.toLowerCase()}. Hold the card flat under good lighting.`);
       return;
     }
 
-    canvas.toBlob(
-      async (blob) => {
-        if (!blob || blob.size < 2048) {
-          isScanningRef.current = false;
-          setError("Could not capture a clear image. Please try again.");
-          return;
-        }
+    try {
+      const blob = await prepareImageForUpload(canvas);
+      timers.current.tPrepEnd = performance.now();
 
-        if (process.env.NODE_ENV !== "production") {
-          console.log("Capture:", JSON.stringify({
-            canvasWidth: canvas.width,
-            canvasHeight: canvas.height,
-            blobSize: blob.size,
-            mimeType: blob.type,
-          }, null, 2));
-        }
-
-        // Frame passed validation — show the review screen so the user can
-        // confirm before we send. No delay: the object URL is created synchronously.
-        const previewUrl = URL.createObjectURL(blob);
-        capturedUrlRef.current = previewUrl;
-        setCapturedBlob(blob);
-        setCapturedPreviewUrl(previewUrl);
+      if (blob.size < 2048) {
         isScanningRef.current = false;
-        setPhase("review");
-        if (process.env.NODE_ENV !== "production") {
-          console.log("Review: Entering capture-review phase", JSON.stringify({
-            blobSize: blob.size,
-          }, null, 2));
-        }
-      },
-      "image/jpeg",
-      0.94
-    );
+        setError("Could not capture a clear image. Please try again.");
+        return;
+      }
+
+      const previewUrl = URL.createObjectURL(blob);
+      capturedUrlRef.current = previewUrl;
+      setCapturedBlob(blob);
+      setCapturedPreviewUrl(previewUrl);
+      setPhase("review");
+    } catch (err) {
+      console.error("Image prep error:", err);
+      isScanningRef.current = false;
+      setError("Image processing failed. Please try again.");
+    }
   };
 
   async function sendToApi(blob: Blob) {
-    // Stop the camera stream before sending to API (saves resources during 15-20s request)
     stopStream();
-    
-    setPhase("processing");
+
+    // Immediate UI Feedback
+    setPhase("uploading");
     setProcessingStep(0);
     dispatch({ type: "scan-processing" });
 
-    if (process.env.NODE_ENV !== "production") {
-      console.log("sendToApi: Starting request", JSON.stringify({
-        blobSize: blob.size,
-        apiUrl: `${API_URL}/scan-id`,
-      }, null, 2));
-    }
-
     const stepInterval = window.setInterval(() => {
-      setProcessingStep((prev) =>
-        prev < PROCESSING_STEPS.length - 1 ? prev + 1 : prev
-      );
+      setProcessingStep((prev) => prev < PROCESSING_STEPS.length - 1 ? prev + 1 : prev);
     }, 2400);
 
     const controller = new AbortController();
     abortRef.current = controller;
-    const timeoutId = window.setTimeout(
-      () => controller.abort("timeout"),
-      SCAN_TIMEOUT_MS
-    );
+    const timeoutId = window.setTimeout(() => controller.abort("timeout"), SCAN_TIMEOUT_MS);
 
-    // Timing for dev logging (async function context, not render)
-    // eslint-disable-next-line react-hooks/purity
-    const requestStartTime = performance.now();
+    timers.current.tUploadStart = performance.now();
 
     try {
       const formData = new FormData();
       formData.append("file", blob, "id-card.jpg");
-
-      if (process.env.NODE_ENV !== "production") {
-        console.log("sendToApi: Sending fetch request...");
-      }
 
       const response = await fetch(`${API_URL}/scan-id`, {
         method: "POST",
@@ -470,51 +390,34 @@ export default function ScanFlow() {
         signal: controller.signal,
       });
 
-      // eslint-disable-next-line react-hooks/purity
-      const requestDuration = performance.now() - requestStartTime;
-
-      if (process.env.NODE_ENV !== "production") {
-        console.log("sendToApi: Received response", JSON.stringify({
-          status: response.status,
-          ok: response.ok,
-          durationMs: Math.round(requestDuration),
-        }, null, 2));
-      }
+      timers.current.tUploadEnd = performance.now();
 
       clearTimeout(timeoutId);
       clearInterval(stepInterval);
       if (resetFlagRef.current) return;
 
       if (!response.ok) {
-        console.error("FastAPI HTTP error:", response.status, response.statusText);
         handleScanFailure("The scanner returned an error. Please try again.", "scan-error");
         return;
       }
 
+      // Move to processing phase for parsing and backend finalizing
+      setPhase("processing");
       const result: ScanApiResponse = await response.json();
-      if (process.env.NODE_ENV !== "production") {
-        console.log("Response:", JSON.stringify({
-          success: result.success,
-          name: result.name,
-          message: result.message,
-          confidence: result.confidence,
-          processing_time_ms: result.processing_time_ms,
-          requestDurationMs: Math.round(requestDuration),
-        }, null, 2));
-      }
+      timers.current.tParseEnd = performance.now();
+
       if (resetFlagRef.current) return;
 
       if (result.success && result.name) {
-        if (process.env.NODE_ENV !== "production") {
-          console.log("sendToApi: Success! Showing greeting for:", result.name);
-        }
         setRecognizedName(result.name);
-        setPhase("detected");
+        setPhase("success");
+        isScanningRef.current = false;
+
+        timers.current.tUiEnd = performance.now();
+        logPerformance();
+
         dispatch({ type: "scan-recognized", fullName: result.name });
       } else {
-        if (process.env.NODE_ENV !== "production") {
-          console.log("sendToApi: API returned failure, calling handleScanFailure");
-        }
         handleScanFailure(
           result.message || "Couldn't read the ID clearly. Please position the full card inside the frame and try again.",
           "scan-error"
@@ -526,40 +429,41 @@ export default function ScanFlow() {
       if (resetFlagRef.current) return;
 
       const timedOut = err instanceof DOMException && err.name === "AbortError";
-      if (process.env.NODE_ENV !== "production") {
-        console.error("sendToApi: Caught error", {
-          error: err,
-          timedOut,
-          errorName: err instanceof Error ? err.name : "unknown",
-          errorMessage: err instanceof Error ? err.message : String(err),
-        });
-      }
-      
       if (timedOut) {
         handleScanFailure("The scan took too long. Please try again.", "scan-network-error");
       } else {
-        console.error("Fetch error:", err);
         handleScanFailure("Scanner service unavailable. Please try again.", "scan-network-error");
       }
     } finally {
-      isScanningRef.current = false;
       abortRef.current = null;
     }
   }
 
-  function handleScanFailure(
-    message: string,
-    voiceAction: "scan-error" | "scan-network-error"
-  ) {
-    // Show the dedicated error/retry page instead of auto-reopening the camera.
-    // The user must tap "Try again" on the ErrorPanel to re-open the camera.
+  function logPerformance() {
+    const t = timers.current;
+    const capture = Math.round(t.tCaptureEnd - t.tCaptureStart);
+    const prep = Math.round(t.tPrepEnd - t.tCaptureEnd);
+    const upload = Math.round(t.tUploadEnd - t.tUploadStart);
+    const parse = Math.round(t.tParseEnd - t.tUploadEnd);
+    const ui = Math.round(t.tUiEnd - t.tParseEnd);
+    const total = Math.round(t.tUiEnd - t.tCaptureStart);
+
+    console.log(`%c[SCAN PERFORMANCE]`, "color: #00ff00; font-weight: bold; font-size: 12px;");
+    console.log(`Capture: ${capture} ms`);
+    console.log(`Preparation: ${prep} ms`);
+    console.log(`Upload: ${upload} ms`);
+    console.log(`Parsing: ${parse} ms`);
+    console.log(`UI Update: ${ui} ms`);
+    console.log(`Total Flow: ${total} ms`);
+  }
+
+  function handleScanFailure(message: string, voiceAction: "scan-error" | "scan-network-error") {
     setError(message);
     setProcessingStep(0);
     setPhase("error");
+    isScanningRef.current = false;
     dispatch({ type: voiceAction });
   }
-
-  // ── Capture-review helpers ─────────────────────────────────────────────────
 
   function revokeCapturedUrl() {
     if (capturedUrlRef.current) {
@@ -571,21 +475,12 @@ export default function ScanFlow() {
   }
 
   function handleRetake() {
-    if (process.env.NODE_ENV !== "production") {
-      console.log("Review: User chose Retake — discarding captured frame, reopening camera");
-    }
     revokeCapturedUrl();
     openCamera();
   }
 
   async function handleConfirmScan() {
     if (!capturedBlob) return;
-    if (process.env.NODE_ENV !== "production") {
-      console.log("Review: User confirmed — sending blob to API", JSON.stringify({
-        blobSize: capturedBlob.size,
-      }, null, 2));
-    }
-    // Snapshot the blob, revoke the preview URL, then hand off to the API.
     const blob = capturedBlob;
     revokeCapturedUrl();
     await sendToApi(blob);
@@ -601,12 +496,12 @@ export default function ScanFlow() {
     setRecognizedName(null);
     setError(null);
     setProcessingStep(0);
-    setPhase("ready");
+    setPhase("idle");
   }
 
   return (
     <main className="relative min-h-screen w-full overflow-x-hidden text-white">
-            <header
+      <header
         className="sticky top-0 z-20 flex items-center justify-between border-b px-6 py-4"
         style={{ background: "rgba(15, 15, 15, 0.2)", backdropFilter: "blur(20px)", borderColor: "rgba(255,255,255,0.1)" }}
       >
@@ -657,16 +552,16 @@ export default function ScanFlow() {
 
       <section className="px-4 sm:px-6 lg:px-12 py-10">
         <div className="max-w-2xl mx-auto">
-          {phase === "detected" && recognizedName ? (
+          {phase === "success" && recognizedName ? (
             <GreetingCard name={recognizedName} onReset={reset} />
           ) : (
             <div
               className="rounded-[24px] overflow-hidden"
               style={{ background: "rgba(15, 15, 15, 0.2)", backdropFilter: "blur(20px)", border: "1px solid rgba(255,255,255,0.1)" }}
             >
-              {phase === "ready" && <ReadyPanel onStart={openCamera} />}
+              {phase === "idle" && <ReadyPanel onStart={openCamera} />}
 
-              {phase === "camera" && (
+              {phase === "capturing" && (
                 <ScanningPanel
                   videoRef={videoRef}
                   containerRef={containerRef}
@@ -679,7 +574,7 @@ export default function ScanFlow() {
                 />
               )}
 
-              {phase === "processing" && (
+              {(phase === "uploading" || phase === "processing") && (
                 <ProcessingPanel step={processingStep} onCancel={reset} />
               )}
 
@@ -806,13 +701,11 @@ function ScanningPanel({
 }) {
   return (
     <div>
-      {/* Landscape ID card viewport (1.586 / 1) so the card fits prominently */}
       <div
         ref={containerRef}
         className="relative w-full bg-black overflow-hidden"
         style={{ aspectRatio: "1.586 / 1" }}
       >
-        {/* Live video – natural orientation for ID card scanning */}
         <video
           ref={videoRef}
           className="absolute inset-0 h-full w-full object-cover"
@@ -821,7 +714,6 @@ function ScanningPanel({
           autoPlay
         />
 
-        {/* Capture flash */}
         <div
           className="absolute inset-0 pointer-events-none"
           style={{
@@ -832,7 +724,6 @@ function ScanningPanel({
           }}
         />
 
-        {/* Dim background surround with subtle cutout for ID card focus */}
         <div
           className="absolute inset-0 pointer-events-none"
           style={{
@@ -842,7 +733,6 @@ function ScanningPanel({
           }}
         />
 
-        {/* Large ID card guide frame — occupies 88% of container */}
         <div
           ref={guideRef}
           className="absolute rounded-xl pointer-events-none"
@@ -855,13 +745,11 @@ function ScanningPanel({
             boxShadow: "0 0 0 1px rgba(255,255,255,0.18), inset 0 0 0 1px rgba(255,255,255,0.08)",
           }}
         >
-          {/* Prominent corner brackets */}
           <CardCorner pos="tl" />
           <CardCorner pos="tr" />
           <CardCorner pos="bl" />
           <CardCorner pos="br" />
 
-          {/* Animated scan line */}
           {videoReady && (
             <div
               className="absolute left-2 right-2 animate-scan"
@@ -874,7 +762,6 @@ function ScanningPanel({
             />
           )}
 
-          {/* Loading state */}
           {!videoReady && (
             <div className="absolute inset-0 flex items-center justify-center">
               <p className="font-sans text-[13px] font-semibold text-white/60 animate-pulse">
@@ -884,7 +771,6 @@ function ScanningPanel({
           )}
         </div>
 
-        {/* Scanning badge */}
         <div
           className="absolute top-3.5 left-1/2 -translate-x-1/2 flex items-center gap-2 rounded-full font-sans font-semibold uppercase z-10"
           style={{
@@ -903,7 +789,6 @@ function ScanningPanel({
         </div>
       </div>
 
-      {/* Inline error / retry hint */}
       {error && (
         <div className="px-5 py-3 flex items-start gap-2.5 border-t" style={{ borderColor: "rgba(255,255,255,0.06)", background: "rgba(255,70,70,0.06)" }}>
           <AlertIcon />
@@ -913,7 +798,6 @@ function ScanningPanel({
         </div>
       )}
 
-      {/* Action bar */}
       <div
         className="flex items-center justify-between px-5 py-4 border-t"
         style={{ borderColor: "rgba(255,255,255,0.06)" }}
@@ -953,6 +837,7 @@ function ScanningPanel({
 }
 
 type CornerPos = "tl" | "tr" | "bl" | "br";
+
 function CardCorner({ pos }: { pos: CornerPos }) {
   const styles: Record<CornerPos, React.CSSProperties> = {
     tl: { top: -2, left: -2, borderTop: "3px solid #fff", borderLeft: "3px solid #fff", borderRadius: "4px 0 0 0" },
@@ -1045,7 +930,6 @@ function ReviewPanel({
 }) {
   return (
     <div>
-      {/* Captured image — same 1.586:1 aspect ratio as the live camera preview */}
       <div
         className="relative w-full bg-black overflow-hidden"
         style={{ aspectRatio: "1.586 / 1" }}
@@ -1057,7 +941,6 @@ function ReviewPanel({
           className="absolute inset-0 h-full w-full object-cover"
         />
 
-        {/* Review badge — same pill style as the scanning badge */}
         <div
           className="absolute top-3.5 left-1/2 -translate-x-1/2 flex items-center gap-2 rounded-full font-sans font-semibold uppercase z-10"
           style={{
@@ -1076,7 +959,6 @@ function ReviewPanel({
         </div>
       </div>
 
-      {/* Action bar — mirrors the ScanningPanel action bar layout */}
       <div
         className="flex items-center justify-between px-5 py-4 border-t"
         style={{ borderColor: "rgba(255,255,255,0.06)" }}
@@ -1125,16 +1007,12 @@ function GreetingCard({ name, onReset }: { name: string; onReset: () => void }) 
   return (
     <div className="rounded-[24px] overflow-hidden animate-fade-up" style={{ background: "rgba(15, 15, 15, 0.2)", backdropFilter: "blur(20px)", border: "1px solid rgba(255,255,255,0.1)" }}>
       <div className="px-8 sm:px-12 py-14 sm:py-18 text-center">
-
-        {/* ── Confirmation badge ── */}
         <div className="inline-flex items-center gap-2 rounded-full px-4 py-1.5 mb-8" style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)" }}>
-         
           <span className="font-sans font-semibold uppercase tracking-[0.13em]" style={{ fontSize: "11px", color: "rgba(255,255,255,0.55)" }}>
             Identity Confirmed
           </span>
         </div>
 
-        {/* ── Staff photo (if recognized as SJCET faculty/leadership) ── */}
         {staffImage && (
           <div className="flex justify-center mb-8">
             <div
@@ -1156,7 +1034,6 @@ function GreetingCard({ name, onReset }: { name: string; onReset: () => void }) 
           </div>
         )}
 
-        {/* ── Full name — hero text ── */}
         <h1
           className="font-display text-white uppercase leading-none"
           style={{
@@ -1170,10 +1047,8 @@ function GreetingCard({ name, onReset }: { name: string; onReset: () => void }) 
           {name}
         </h1>
 
-        {/* ── Divider ── */}
         <div className="mx-auto mt-8 mb-8" style={{ width: 40, height: 1, background: "rgba(255,255,255,0.12)" }} />
 
-        {/* ── Welcome copy ── */}
         <p className="font-sans text-[15px]" style={{ color: "rgba(255,255,255,0.5)", lineHeight: 1.6 }}>
           Welcome to{" "}
           <span className="font-semibold" style={{ color: "rgba(255,255,255,0.85)" }}>Asthra 11.0</span>
@@ -1184,7 +1059,6 @@ function GreetingCard({ name, onReset }: { name: string; onReset: () => void }) 
           We&apos;re glad to have you with us.
         </p>
 
-        {/* ── Action buttons ── */}
         <div className="mt-10 flex flex-col sm:flex-row gap-3 justify-center">
           <Link
             href="/events"
@@ -1198,8 +1072,12 @@ function GreetingCard({ name, onReset }: { name: string; onReset: () => void }) 
               padding: "13px 26px",
               boxShadow: "0 0 0 1px rgba(255,255,255,0.1)",
             }}
-            onMouseEnter={(e) => ((e.currentTarget as HTMLElement).style.transform = "translateY(-1px)")}
-            onMouseLeave={(e) => ((e.currentTarget as HTMLElement).style.transform = "")}
+            onMouseEnter={(e) => {
+              (e.currentTarget as HTMLElement).style.transform = "translateY(-1px)";
+            }}
+            onMouseLeave={(e) => {
+              (e.currentTarget as HTMLElement).style.transform = "";
+            }}
           >
             Explore events <ArrowRight />
           </Link>
