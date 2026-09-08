@@ -17,6 +17,66 @@ interface ScanApiResponse {
   processing_time_ms?: number;
 }
 
+// ── Staff image mapping (SJCET Palai — ER Faculty & Leadership) ───────────
+// Maps normalized name fragments → public/staff/<filename>
+const STAFF_IMAGES: Record<string, string> = {
+  "ancy mathew":       "/staff/Ancy_Mathew.jpg",
+  "ashitha jose":      "/staff/Ashitha_Jose.jpeg",
+  "athira ms":         "/staff/Athira_MS.jpg",
+  "athira":            "/staff/Athira_MS.jpg",
+  "christy joy":       "/staff/Christy_Joy.jpg",
+  "dan thankachan":    "/staff/Fr_Dan_Thankachan.jpeg",
+  "fr dan":            "/staff/Fr_Dan_Thankachan.jpeg",
+  "babu joseph":       "/staff/GP_Capt_Babu_Joseph.jpg",
+  "gp capt babu":      "/staff/GP_Capt_Babu_Joseph.jpg",
+  "giby jose":         "/staff/HOD_Dr_Giby_Jose.jpg",
+  "hod giby":          "/staff/HOD_Dr_Giby_Jose.jpg",
+  "jiss mathew":       "/staff/Jiss_Mathew.jpg",
+  "jiss mohan":        "/staff/Jiss_Mohan_K.jpg",
+  "justin tom":        "/staff/Justin_Tom.jpeg",
+  "pinky ms":          "/staff/Pinky_MS.jpg",
+  "pinky":             "/staff/Pinky_MS.jpg",
+  "shilpa":            "/staff/Shilpa_Lizbeth_George.jpg",
+  "shilpa lizbeth":    "/staff/Shilpa_Lizbeth_George.jpg",
+  "soya treesa":       "/staff/Soya_Treesa_Jose.jpg",
+  "tinu thomas":       "/staff/Tinu_Thomas.jpg",
+  "george karamvelil": "/staff/Bursar_Rev_Dr_George_Karamvelil.jpeg",
+  "bursar george":     "/staff/Bursar_Rev_Dr_George_Karamvelil.jpeg",
+  "joseph thadathil":  "/staff/Chairman_Msgr_Dr_Joseph_Thadathil.jpg",
+  "chairman joseph":   "/staff/Chairman_Msgr_Dr_Joseph_Thadathil.jpg",
+  "james john":        "/staff/Director_Rev_Prof_James_John_Mangalathu.jpg",
+  "director james":    "/staff/Director_Rev_Prof_James_John_Mangalathu.jpg",
+  "thomas njavallil":  "/staff/Lab-Manager_Rev_Fr_Thomas_Njavallil.jpg",
+  "lab manager":       "/staff/Lab-Manager_Rev_Fr_Thomas_Njavallil.jpg",
+  "joseph kallarangatt": "/staff/Patron_Mar_Joseph_Kallarangatt.jpg",
+  "patron joseph":     "/staff/Patron_Mar_Joseph_Kallarangatt.jpg",
+  "vp devassia":       "/staff/Principal_Dr_VP_Devassia.jpg",
+  "devassia":          "/staff/Principal_Dr_VP_Devassia.jpg",
+  "joseph purayidathil": "/staff/Vice-Principal_Rev_Dr_Joseph_Purayidathil.jpg",
+  "vice principal":    "/staff/Vice-Principal_Rev_Dr_Joseph_Purayidathil.jpg",
+};
+
+/** Try to find a staff photo for the given scanned name. */
+function lookupStaffImage(scannedName: string): string | null {
+  const lower = scannedName.toLowerCase().trim();
+  // Direct substring match (longest key wins)
+  let bestKey = "";
+  for (const key of Object.keys(STAFF_IMAGES)) {
+    if (lower.includes(key) && key.length > bestKey.length) {
+      bestKey = key;
+    }
+  }
+  if (bestKey) return STAFF_IMAGES[bestKey];
+  // Fallback: match individual tokens against keys
+  for (const key of Object.keys(STAFF_IMAGES)) {
+    const tokens = key.split(" ");
+    if (tokens.some((t) => lower.includes(t) && t.length > 3)) {
+      return STAFF_IMAGES[key];
+    }
+  }
+  return null;
+}
+
 // ── State machine phases ───────────────────────────────────────────────────
 type Phase = "ready" | "camera" | "processing" | "review" | "detected" | "error";
 
@@ -1058,6 +1118,8 @@ function ReviewPanel({
 }
 
 function GreetingCard({ name, onReset }: { name: string; onReset: () => void }) {
+  const staffImage = lookupStaffImage(name);
+
   return (
     <div className="rounded-[24px] overflow-hidden animate-fade-up" style={{ background: "rgba(15, 15, 15, 0.2)", backdropFilter: "blur(20px)", border: "1px solid rgba(255,255,255,0.1)" }}>
       <div className="px-8 sm:px-12 py-14 sm:py-18 text-center">
@@ -1069,6 +1131,28 @@ function GreetingCard({ name, onReset }: { name: string; onReset: () => void }) 
             Identity Confirmed
           </span>
         </div>
+
+        {/* ── Staff photo (if recognized as SJCET faculty/leadership) ── */}
+        {staffImage && (
+          <div className="flex justify-center mb-8">
+            <div
+              className="relative rounded-full overflow-hidden"
+              style={{
+                width: "clamp(120px, 25vw, 180px)",
+                height: "clamp(120px, 25vw, 180px)",
+                border: "3px solid rgba(255,255,255,0.15)",
+                boxShadow: "0 0 40px rgba(255,255,255,0.08)",
+              }}
+            >
+              <img
+                src={staffImage}
+                alt={name}
+                className="w-full h-full object-cover"
+                onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
+              />
+            </div>
+          </div>
+        )}
 
         {/* ── Full name — hero text ── */}
         <h1
