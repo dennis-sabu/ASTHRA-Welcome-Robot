@@ -39,6 +39,8 @@ const STAFF_IMAGES: Record<string, string> = {
   "shilpa":            "/staff/Shilpa_Lizbeth_George.jpg",
   "shilpa lizbeth":    "/staff/Shilpa_Lizbeth_George.jpg",
   "soya treesa":       "/staff/Soya_Treesa_Jose.jpg",
+  "sreelakshmi k r":   "/staff/Sreelakshmi_K_R.jpg",
+  "sreelakshmi":       "/staff/Sreelakshmi_K_R.jpg",
   "tinu thomas":       "/staff/Tinu_Thomas.jpg",
   "george karamvelil": "/staff/Bursar_Rev_Dr_George_Karamvelil.jpeg",
   "bursar george":     "/staff/Bursar_Rev_Dr_George_Karamvelil.jpeg",
