@@ -12,41 +12,67 @@ const ROLE_LABELS: Record<string, string> = {
   design: "Design Team",
 };
 
-// ── Coordinator Hero Card ──────────────────────────────────────────────────
+const ROLE_ACCENTS: Record<string, string> = {
+  coordinator: "#22d3ee",
+  technical: "#22d3ee",
+  design: "#c084fc",
+};
 
-function CoordinatorCard({ contributor, index }: { contributor: Contributor; index: number }) {
+const ROLE_ACCENT_BORDERS: Record<string, string> = {
+  coordinator: "rgba(34, 211, 238, 0.4)",
+  technical: "rgba(34, 211, 238, 0.35)",
+  design: "rgba(192, 132, 252, 0.35)",
+};
+
+
+// ── Unified Card (all roles) ───────────────────────────────────────────────
+
+function PersonCard({ contributor, index }: { contributor: Contributor; index: number }) {
   const [hovered, setHovered] = useState(false);
+  const accent = ROLE_ACCENTS[contributor.role] ?? "#22d3ee";
+  const accentBorder = ROLE_ACCENT_BORDERS[contributor.role] ?? "rgba(34,211,238,0.35)";
+  const accentBg = `${accent}14`;
 
   return (
     <div
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
       style={{
-        position: "relative",
         borderRadius: 24,
         overflow: "hidden",
-        background: "rgba(18, 18, 22, 0.65)",
+        background: `linear-gradient(160deg, ${accentBg} 0%, rgba(14,14,18,0.92) 40%)`,
         backdropFilter: "blur(24px)",
-        border: hovered ? "1px solid rgba(34, 211, 238, 0.45)" : "1px solid rgba(255, 255, 255, 0.1)",
+        border: hovered ? `1px solid ${accentBorder}` : "1px solid rgba(255,255,255,0.09)",
         boxShadow: hovered
-          ? "0 22px 50px -10px rgba(0, 0, 0, 0.75), 0 0 35px -5px rgba(34, 211, 238, 0.2)"
-          : "0 16px 40px -10px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(255, 255, 255, 0.03)",
-        transform: hovered ? "translateY(-4px)" : "translateY(0)",
-        transition: "transform 0.35s cubic-bezier(0.22, 1, 0.36, 1), border-color 0.35s ease, box-shadow 0.35s ease",
-        animation: "fadeUp 0.6s cubic-bezier(0.22, 1, 0.36, 1) both",
-        ["--d" as string]: `${index * 0.12}s`,
+          ? `0 24px 56px -12px rgba(0,0,0,0.75), 0 0 40px -8px ${accent}45`
+          : `0 8px 32px -8px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,255,255,0.04)`,
+        transform: hovered ? "translateY(-6px) scale(1.01)" : "translateY(0) scale(1)",
+        transition: "transform 0.38s cubic-bezier(0.22,1,0.36,1), border-color 0.38s ease, box-shadow 0.38s ease",
+        animation: "fadeUp 0.6s cubic-bezier(0.22,1,0.36,1) both",
+        ["--d" as string]: `${0.04 + index * 0.04}s`,
         display: "flex",
         flexDirection: "column",
       }}
     >
-      {/* Photo */}
+      {/* Glowing accent top bar */}
+      <div
+        style={{
+          height: 3,
+          width: "100%",
+          background: `linear-gradient(90deg, transparent, ${accent}, transparent)`,
+          opacity: hovered ? 1 : 0.45,
+          transition: "opacity 0.38s ease",
+        }}
+      />
+
+      {/* Photo — taller portrait crop */}
       <div
         style={{
           width: "100%",
-          aspectRatio: "1 / 1",
-          overflow: "hidden",
+          aspectRatio: "4 / 5",
           position: "relative",
-          background: "rgba(255, 255, 255, 0.03)",
+          overflow: "hidden",
+          background: `linear-gradient(180deg, ${accentBg} 0%, rgba(10,10,14,0.6) 100%)`,
         }}
       >
         {contributor.image_url ? (
@@ -59,8 +85,8 @@ function CoordinatorCard({ contributor, index }: { contributor: Contributor; ind
               height: "100%",
               objectFit: "cover",
               display: "block",
-              transform: hovered ? "scale(1.03)" : "scale(1)",
-              transition: "transform 0.5s cubic-bezier(0.22, 1, 0.36, 1)",
+              transform: hovered ? "scale(1.06)" : "scale(1)",
+              transition: "transform 0.55s cubic-bezier(0.22,1,0.36,1)",
             }}
           />
         ) : (
@@ -71,272 +97,104 @@ function CoordinatorCard({ contributor, index }: { contributor: Contributor; ind
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
-              background: "linear-gradient(180deg, rgba(34, 211, 238, 0.08) 0%, rgba(255, 255, 255, 0.02) 100%)",
             }}
           >
             <span
               style={{
-                fontSize: 38,
-                color: "rgba(34, 211, 238, 0.4)",
-                fontFamily: "Inter, system-ui, sans-serif",
-                fontWeight: 700,
-                opacity: 0.7,
-              }}
-            >
-              {contributor.name[0]}
-            </span>
-          </div>
-        )}
-
-        {/* Soft bottom vignette into card body */}
-        <div
-          style={{
-            position: "absolute",
-            inset: 0,
-            pointerEvents: "none",
-            background: "linear-gradient(180deg, transparent 55%, rgba(18, 18, 22, 0.75) 85%, rgba(18, 18, 22, 0.98) 100%)",
-          }}
-        />
-
-        {/* Sleek role badge */}
-        <div
-          style={{
-            position: "absolute",
-            top: 14,
-            left: 14,
-            display: "inline-flex",
-            alignItems: "center",
-            gap: 6,
-            background: "rgba(10, 10, 14, 0.75)",
-            backdropFilter: "blur(12px)",
-            border: "1px solid rgba(34, 211, 238, 0.35)",
-            borderRadius: 20,
-            padding: "4px 10px",
-          }}
-        >
-          <span
-            style={{
-              width: 6,
-              height: 6,
-              borderRadius: "50%",
-              background: "#22d3ee",
-              boxShadow: "0 0 8px #22d3ee",
-              display: "inline-block",
-            }}
-          />
-          <span
-            style={{
-              fontSize: 10.5,
-              fontWeight: 700,
-              letterSpacing: "0.12em",
-              textTransform: "uppercase",
-              color: "#22d3ee",
-              fontFamily: "Inter, system-ui, sans-serif",
-            }}
-          >
-            Coordinator
-          </span>
-        </div>
-      </div>
-
-      {/* Info */}
-      <div style={{ padding: "14px 16px 16px", flex: 1, display: "flex", flexDirection: "column", justifyContent: "space-between" }}>
-        <div>
-          <span
-            style={{
-              display: "inline-block",
-              fontSize: 9.5,
-              fontWeight: 700,
-              letterSpacing: "0.1em",
-              textTransform: "uppercase",
-              color: "#22d3ee",
-              marginBottom: 4,
-              fontFamily: "Inter, system-ui, sans-serif",
-            }}
-          >
-            Coordinator
-          </span>
-          <h3
-            style={{
-              fontSize: 15,
-              fontWeight: 600,
-              color: "#ffffff",
-              fontFamily: "Inter, system-ui, sans-serif",
-              lineHeight: 1.25,
-              marginBottom: 3,
-            }}
-          >
-            {contributor.name}
-          </h3>
-          <p
-            style={{
-              fontSize: 12,
-              color: "rgba(255, 255, 255, 0.55)",
-              fontFamily: "Inter, system-ui, sans-serif",
-              lineHeight: 1.4,
-            }}
-          >
-            {contributor.department}
-          </p>
-        </div>
-
-        <div
-          style={{
-            marginTop: 10,
-            paddingTop: 8,
-            borderTop: "1px solid rgba(255, 255, 255, 0.06)",
-            fontSize: 11,
-            color: "rgba(255, 255, 255, 0.4)",
-            fontFamily: "Inter, system-ui, sans-serif",
-          }}
-        >
-          {contributor.year}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ── Team Member Card ───────────────────────────────────────────────────────
-
-function MemberCard({ contributor, index }: { contributor: Contributor; index: number }) {
-  const [hovered, setHovered] = useState(false);
-  const isTechnical = contributor.role === "technical";
-  const accent = isTechnical ? "#22d3ee" : "#c084fc";
-  const accentBorder = isTechnical ? "rgba(34, 211, 238, 0.35)" : "rgba(192, 132, 252, 0.35)";
-  const accentBg = isTechnical ? "rgba(34, 211, 238, 0.1)" : "rgba(192, 132, 252, 0.1)";
-
-  return (
-    <div
-      onMouseEnter={() => setHovered(true)}
-      onMouseLeave={() => setHovered(false)}
-      style={{
-        borderRadius: 20,
-        overflow: "hidden",
-        background: "rgba(18, 18, 22, 0.6)",
-        backdropFilter: "blur(20px)",
-        border: hovered ? `1px solid ${accentBorder}` : "1px solid rgba(255, 255, 255, 0.08)",
-        boxShadow: hovered
-          ? `0 14px 34px -8px rgba(0, 0, 0, 0.6), 0 0 24px -6px ${accent}25`
-          : "0 8px 24px -6px rgba(0, 0, 0, 0.45)",
-        transform: hovered ? "translateY(-3px)" : "translateY(0)",
-        transition: "transform 0.3s cubic-bezier(0.22, 1, 0.36, 1), border-color 0.3s ease, box-shadow 0.3s ease",
-        animation: "fadeUp 0.6s cubic-bezier(0.22, 1, 0.36, 1) both",
-        ["--d" as string]: `${0.08 + index * 0.05}s`,
-        display: "flex",
-        flexDirection: "column",
-      }}
-    >
-      {/* Photo with square framing */}
-      <div
-        style={{
-          width: "100%",
-          aspectRatio: "1 / 1",
-          position: "relative",
-          overflow: "hidden",
-          background: "rgba(255, 255, 255, 0.03)",
-        }}
-      >
-        {contributor.image_url ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={contributor.image_url}
-            alt={contributor.name}
-            style={{
-              width: "100%",
-              height: "100%",
-              objectFit: "cover",
-              display: "block",
-              transform: hovered ? "scale(1.04)" : "scale(1)",
-              transition: "transform 0.4s cubic-bezier(0.22, 1, 0.36, 1)",
-            }}
-          />
-        ) : (
-          <div
-            style={{
-              width: "100%",
-              height: "100%",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              background: `linear-gradient(180deg, ${accentBg} 0%, rgba(255, 255, 255, 0.02) 100%)`,
-            }}
-          >
-            <span
-              style={{
-                fontSize: 38,
+                fontSize: 56,
                 color: accent,
-                fontWeight: 700,
+                fontWeight: 800,
                 fontFamily: "Inter, system-ui, sans-serif",
-                opacity: 0.7,
+                opacity: 0.55,
+                textShadow: `0 0 40px ${accent}80`,
               }}
             >
               {contributor.name[0]}
             </span>
           </div>
         )}
+
+        {/* Rich bottom gradient */}
         <div
           style={{
             position: "absolute",
             inset: 0,
             pointerEvents: "none",
-            background: "linear-gradient(180deg, transparent 60%, rgba(18, 18, 22, 0.8) 100%)",
+            background: "linear-gradient(180deg, transparent 45%, rgba(14,14,18,0.7) 80%, rgba(14,14,18,0.97) 100%)",
+          }}
+        />
+
+        {/* Subtle side glow on hover */}
+        <div
+          style={{
+            position: "absolute",
+            inset: 0,
+            pointerEvents: "none",
+            background: `radial-gradient(ellipse at 50% 110%, ${accent}20 0%, transparent 65%)`,
+            opacity: hovered ? 1 : 0,
+            transition: "opacity 0.4s ease",
           }}
         />
       </div>
 
       {/* Info */}
-      <div style={{ padding: "14px 16px 16px", flex: 1, display: "flex", flexDirection: "column", justifyContent: "space-between" }}>
+      <div style={{ padding: "18px 20px 20px", flex: 1, display: "flex", flexDirection: "column", justifyContent: "space-between" }}>
         <div>
+          {/* Role label */}
           <span
             style={{
-              display: "inline-block",
-              fontSize: 9.5,
+              display: "block",
+              fontSize: 10,
               fontWeight: 700,
-              letterSpacing: "0.1em",
+              letterSpacing: "0.13em",
               textTransform: "uppercase",
               color: accent,
-              marginBottom: 4,
+              marginBottom: 7,
               fontFamily: "Inter, system-ui, sans-serif",
+              textShadow: `0 0 12px ${accent}60`,
             }}
           >
             {ROLE_LABELS[contributor.role] ?? contributor.role}
           </span>
           <h3
             style={{
-              fontSize: 15,
-              fontWeight: 600,
+              fontSize: 17,
+              fontWeight: 700,
               color: "#ffffff",
               fontFamily: "Inter, system-ui, sans-serif",
-              lineHeight: 1.25,
-              marginBottom: 3,
+              lineHeight: 1.2,
+              marginBottom: 5,
+              letterSpacing: "-0.02em",
             }}
           >
             {contributor.name}
           </h3>
           <p
             style={{
-              fontSize: 12,
-              color: "rgba(255, 255, 255, 0.55)",
+              fontSize: 12.5,
+              color: "rgba(255,255,255,0.5)",
               fontFamily: "Inter, system-ui, sans-serif",
-              lineHeight: 1.4,
+              lineHeight: 1.45,
             }}
           >
             {contributor.department}
           </p>
         </div>
-
         <div
           style={{
-            marginTop: 10,
-            paddingTop: 8,
-            borderTop: "1px solid rgba(255, 255, 255, 0.06)",
+            marginTop: 14,
+            paddingTop: 10,
+            borderTop: `1px solid ${accent}22`,
             fontSize: 11,
-            color: "rgba(255, 255, 255, 0.4)",
+            color: "rgba(255,255,255,0.35)",
             fontFamily: "Inter, system-ui, sans-serif",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
           }}
         >
-          {contributor.year}
+          <span>{contributor.year}</span>
+          <span style={{ fontSize: 9, letterSpacing: "0.08em", textTransform: "uppercase", color: `${accent}80` }}>SJCET</span>
         </div>
       </div>
     </div>
@@ -354,10 +212,6 @@ export default function MakersShowcase() {
       .then(setContributors)
       .finally(() => setLoading(false));
   }, []);
-
-  const coordinators = contributors.filter((c) => c.role === "coordinator");
-  const technical = contributors.filter((c) => c.role === "technical");
-  const design = contributors.filter((c) => c.role === "design");
 
   return (
     <main className="relative min-h-screen w-full overflow-x-hidden text-white">
@@ -425,9 +279,9 @@ export default function MakersShowcase() {
         </div>
       </section>
 
-      {/* Content */}
+      {/* All members — single continuous grid */}
       <section className="px-4 sm:px-6 lg:px-12 pb-20">
-        <div className="max-w-4xl mx-auto">
+        <div className="max-w-7xl mx-auto">
 
           {loading && (
             <div className="flex justify-center items-center" style={{ padding: "80px 0" }}>
@@ -444,76 +298,16 @@ export default function MakersShowcase() {
           )}
 
           {!loading && contributors.length > 0 && (
-            <div style={{ display: "flex", flexDirection: "column", gap: 48 }}>
-
-              {/* Coordinators — large hero cards */}
-              {coordinators.length > 0 && (
-                <div>
-                  <div className="flex items-center justify-between mb-6 pb-2 border-b border-white/[0.08]">
-                    <p
-                      className="font-sans font-semibold uppercase tracking-[0.14em]"
-                      style={{ fontSize: "11px", color: "rgba(34,211,238,0.9)" }}
-                    >
-                      Project Coordinators
-                    </p>
-                    <span style={{ fontSize: 11, color: "rgba(255,255,255,0.4)", fontFamily: "Inter, system-ui, sans-serif" }}>
-                      {coordinators.length}/2 Leads
-                    </span>
-                  </div>
-
-                  <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", gap: 16 }}>
-                    {coordinators.map((c, i) => (
-                      <CoordinatorCard key={c.id} contributor={c} index={i} />
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Technical Team */}
-              {technical.length > 0 && (
-                <div>
-                  <div className="flex items-center justify-between mb-6 pb-2 border-b border-white/[0.08]">
-                    <p
-                      className="font-sans font-semibold uppercase tracking-[0.14em]"
-                      style={{ fontSize: "11px", color: "rgba(100,200,255,0.9)" }}
-                    >
-                      Technical Team
-                    </p>
-                    <span style={{ fontSize: 11, color: "rgba(255,255,255,0.4)", fontFamily: "Inter, system-ui, sans-serif" }}>
-                      {technical.length} Member{technical.length !== 1 ? "s" : ""}
-                    </span>
-                  </div>
-
-                  <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", gap: 16 }}>
-                    {technical.map((c, i) => (
-                      <MemberCard key={c.id} contributor={c} index={i} />
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Design Team */}
-              {design.length > 0 && (
-                <div>
-                  <div className="flex items-center justify-between mb-6 pb-2 border-b border-white/[0.08]">
-                    <p
-                      className="font-sans font-semibold uppercase tracking-[0.14em]"
-                      style={{ fontSize: "11px", color: "rgba(200,120,255,0.9)" }}
-                    >
-                      Design Team
-                    </p>
-                    <span style={{ fontSize: 11, color: "rgba(255,255,255,0.4)", fontFamily: "Inter, system-ui, sans-serif" }}>
-                      {design.length} Member{design.length !== 1 ? "s" : ""}
-                    </span>
-                  </div>
-
-                  <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", gap: 16 }}>
-                    {design.map((c, i) => (
-                      <MemberCard key={c.id} contributor={c} index={i} />
-                    ))}
-                  </div>
-                </div>
-              )}
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(auto-fill, minmax(240px, 1fr))",
+                gap: 20,
+              }}
+            >
+              {contributors.map((c, i) => (
+                <PersonCard key={c.id} contributor={c} index={i} />
+              ))}
             </div>
           )}
 
