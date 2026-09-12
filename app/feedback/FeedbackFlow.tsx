@@ -414,7 +414,7 @@ function ThankYouScreen({ onReset }: { onReset: () => void }) {
         </span>{" "}
         — with love from the Department of{" "}
         <span style={{ color: "rgba(255,255,255,0.82)", fontWeight: 500 }}>
-          Electronics &amp; Computer Engineering (ECE), SJCET Palai
+          Electronics &amp; Computer Engineering (ER), SJCET Palai
         </span>
         .
       </p>

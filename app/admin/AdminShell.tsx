@@ -357,9 +357,18 @@ function ContributorForm({
 
       <div>
         <label style={labelStyle}>Department *</label>
-        <select name="department" required defaultValue={initial?.department ?? ""} style={selectStyle}>
+        <select
+          name="department"
+          required
+          defaultValue={
+            initial?.department?.includes("Electronics and Computer")
+              ? "Electronics and Computer (ER)"
+              : (initial?.department ?? "")
+          }
+          style={selectStyle}
+        >
           <option value="" disabled style={{ background: "#1a1a1a" }}>Select department</option>
-          <option value="Electronics and Computer Engineering" style={{ background: "#1a1a1a" }}>Electronics and Computer Engineering (ECE)</option>
+          <option value="Electronics and Computer (ER)" style={{ background: "#1a1a1a" }}>Electronics and Computer (ER)</option>
           <option value="Computer Science and Engineering" style={{ background: "#1a1a1a" }}>Computer Science and Engineering (CSE)</option>
           <option value="Electronics and Communication Engineering" style={{ background: "#1a1a1a" }}>Electronics and Communication Engineering (EC)</option>
           <option value="Electrical and Electronics Engineering" style={{ background: "#1a1a1a" }}>Electrical and Electronics Engineering (EEE)</option>
