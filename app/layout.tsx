@@ -22,6 +22,20 @@ export const metadata: Metadata = {
   title: "Intelligence Designed To Evolve",
   description:
     "Asthra 11.0 — the premier AI, robotics, and engineering technology festival at Electronics and Computer Engineering Department. Scan your ID or explore all events.",
+  icons: {
+    icon: [
+      { url: "/fevicon/favicon.ico" },
+      { url: "/fevicon/favicon-16x16.png", sizes: "16x16", type: "image/png" },
+      { url: "/fevicon/favicon-32x32.png", sizes: "32x32", type: "image/png" },
+    ],
+    apple: [
+      { url: "/fevicon/apple-touch-icon.png" },
+    ],
+    other: [
+      { rel: "android-chrome-192x192", url: "/fevicon/android-chrome-192x192.png" },
+      { rel: "android-chrome-512x512", url: "/fevicon/android-chrome-512x512.png" },
+    ],
+  },
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
@@ -31,6 +45,13 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       className={`${inter.variable} ${mono.variable} h-full`}
     >
       <head>
+        {/* Favicons */}
+        <link rel="icon" href="/fevicon/favicon.ico" sizes="any" />
+        <link rel="icon" type="image/png" sizes="16x16" href="/fevicon/favicon-16x16.png" />
+        <link rel="icon" type="image/png" sizes="32x32" href="/fevicon/favicon-32x32.png" />
+        <link rel="apple-touch-icon" href="/fevicon/apple-touch-icon.png" />
+        <link rel="manifest" href="/fevicon/site.webmanifest" />
+
         {/* Inter via Google Fonts */}
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link
