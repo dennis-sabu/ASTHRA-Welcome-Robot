@@ -143,11 +143,14 @@ function StarRating({
 function FeedbackCard({
   question,
   index,
+  rating,
+  onRate,
 }: {
   question: Question;
   index: number;
+  rating: number;
+  onRate: (n: number) => void;
 }) {
-  const [rating, setRating] = useState(0);
   const [hovered, setHovered] = useState(0);
 
   const displayRating = hovered > 0 ? hovered : rating;
@@ -222,7 +225,7 @@ function FeedbackCard({
           rating={rating}
           hovered={hovered}
           onRate={(n) => {
-            setRating(n);
+            onRate(n);
             setHovered(0);
           }}
           onHover={setHovered}
@@ -289,6 +292,15 @@ function FeedbackCard({
 // ── Main Feedback Flow ─────────────────────────────────────────────────────
 
 export default function FeedbackFlow() {
+  const [submitted, setSubmitted] = useState(false);
+  const [ratings, setRatings] = useState<Record<number, number>>({});
+
+  const allRated = QUESTIONS.every((q) => (ratings[q.id] ?? 0) > 0);
+
+  function handleRate(id: number, n: number) {
+    setRatings((prev) => ({ ...prev, [id]: n }));
+  }
+
   return (
     <main className="relative min-h-screen w-full overflow-x-hidden text-white">
       {/* ── Sticky header ── */}
@@ -398,8 +410,91 @@ export default function FeedbackFlow() {
       <section className="px-4 sm:px-6 lg:px-12 py-6 pb-16">
         <div className="max-w-2xl mx-auto flex flex-col gap-5">
           {QUESTIONS.map((q, i) => (
-            <FeedbackCard key={q.id} question={q} index={i} />
+            <FeedbackCard
+              key={q.id}
+              question={q}
+              index={i}
+              rating={ratings[q.id] ?? 0}
+              onRate={(n) => handleRate(q.id, n)}
+            />
           ))}
+
+          {/* Submit button */}
+          <div
+            className="mt-2 anim"
+            style={{ ["--d" as string]: `${0.08 + QUESTIONS.length * 0.09}s` }}
+          >
+            {submitted ? (
+              /* ── Thank-you state ── */
+              <div
+                className="rounded-[20px] px-8 py-7 flex flex-col items-center gap-3 text-center"
+                style={{
+                  background: "rgba(245,184,0,0.06)",
+                  border: "1px solid rgba(245,184,0,0.22)",
+                  boxShadow: "0 0 30px rgba(245,184,0,0.06)",
+                }}
+              >
+                <span style={{ fontSize: 32 }}>✓</span>
+                <p
+                  className="font-display text-white"
+                  style={{ fontSize: "clamp(20px, 3vw, 26px)", lineHeight: 1.1 }}
+                >
+                  Thank you<span style={{ color: "rgba(245,184,0,0.9)" }}>.</span>
+                </p>
+                <p
+                  className="font-sans"
+                  style={{ fontSize: "14px", color: "rgba(255,255,255,0.45)", lineHeight: 1.55 }}
+                >
+                  Your feedback has been submitted. We appreciate your time!
+                </p>
+              </div>
+            ) : (
+              /* ── Submit button ── */
+              <button
+                id="feedback-submit-btn"
+                type="button"
+                disabled={!allRated}
+                onClick={() => allRated && setSubmitted(true)}
+                className="w-full rounded-[20px] font-sans font-semibold transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-white"
+                style={{
+                  cursor: allRated ? "pointer" : "not-allowed",
+                  fontSize: "clamp(14px, 1.5vw, 16px)",
+                  padding: "16px 32px",
+                  letterSpacing: "-0.01em",
+                  transition: "background 0.4s ease, color 0.4s ease, box-shadow 0.4s ease, transform 0.18s ease",
+                  // Dark when incomplete, bright white when all rated
+                  background: allRated ? "#fff" : "rgba(255,255,255,0.07)",
+                  color: allRated ? "#000" : "rgba(255,255,255,0.28)",
+                  border: allRated ? "none" : "1px solid rgba(255,255,255,0.08)",
+                  boxShadow: allRated
+                    ? "0 0 0 1px rgba(255,255,255,0.15), 0 0 24px rgba(255,255,255,0.2), 0 0 48px rgba(255,255,255,0.08)"
+                    : "none",
+                }}
+                onMouseEnter={(e) => {
+                  if (!allRated) return;
+                  (e.currentTarget as HTMLElement).style.transform = "translateY(-1px) scale(1.01)";
+                  (e.currentTarget as HTMLElement).style.boxShadow =
+                    "0 0 0 1px rgba(245,184,0,0.3), 0 0 28px rgba(245,184,0,0.25), 0 0 56px rgba(245,184,0,0.1)";
+                }}
+                onMouseLeave={(e) => {
+                  if (!allRated) return;
+                  (e.currentTarget as HTMLElement).style.transform = "";
+                  (e.currentTarget as HTMLElement).style.boxShadow =
+                    "0 0 0 1px rgba(255,255,255,0.15), 0 0 24px rgba(255,255,255,0.2), 0 0 48px rgba(255,255,255,0.08)";
+                }}
+                onMouseDown={(e) => {
+                  if (!allRated) return;
+                  (e.currentTarget as HTMLElement).style.transform = "scale(0.99)";
+                }}
+                onMouseUp={(e) => {
+                  if (!allRated) return;
+                  (e.currentTarget as HTMLElement).style.transform = "translateY(-1px) scale(1.01)";
+                }}
+              >
+                {allRated ? "Submit Feedback" : `Rate all questions to submit (${Object.keys(ratings).length}/5)`}
+              </button>
+            )}
+          </div>
 
           {/* Footer note */}
           <div
