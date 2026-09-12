@@ -39,11 +39,11 @@ function CoordinatorCard({ contributor, index }: { contributor: Contributor; ind
         flexDirection: "column",
       }}
     >
-      {/* Photo with natural portrait framing */}
+      {/* Photo */}
       <div
         style={{
           width: "100%",
-          aspectRatio: "1 / 1.08",
+          aspectRatio: "1 / 1",
           overflow: "hidden",
           position: "relative",
           background: "rgba(255, 255, 255, 0.03)",
@@ -76,10 +76,11 @@ function CoordinatorCard({ contributor, index }: { contributor: Contributor; ind
           >
             <span
               style={{
-                fontSize: 68,
+                fontSize: 38,
                 color: "rgba(34, 211, 238, 0.4)",
                 fontFamily: "Inter, system-ui, sans-serif",
                 fontWeight: 700,
+                opacity: 0.7,
               }}
             >
               {contributor.name[0]}
@@ -139,27 +140,40 @@ function CoordinatorCard({ contributor, index }: { contributor: Contributor; ind
       </div>
 
       {/* Info */}
-      <div style={{ padding: "18px 22px 22px", flex: 1, display: "flex", flexDirection: "column", justifyContent: "space-between" }}>
+      <div style={{ padding: "14px 16px 16px", flex: 1, display: "flex", flexDirection: "column", justifyContent: "space-between" }}>
         <div>
-          <h2
+          <span
             style={{
-              fontSize: "clamp(20px, 2.2vw, 24px)",
+              display: "inline-block",
+              fontSize: 9.5,
               fontWeight: 700,
+              letterSpacing: "0.1em",
+              textTransform: "uppercase",
+              color: "#22d3ee",
+              marginBottom: 4,
+              fontFamily: "Inter, system-ui, sans-serif",
+            }}
+          >
+            Coordinator
+          </span>
+          <h3
+            style={{
+              fontSize: 15,
+              fontWeight: 600,
               color: "#ffffff",
               fontFamily: "Inter, system-ui, sans-serif",
-              letterSpacing: "-0.025em",
-              lineHeight: 1.2,
-              marginBottom: 6,
+              lineHeight: 1.25,
+              marginBottom: 3,
             }}
           >
             {contributor.name}
-          </h2>
+          </h3>
           <p
             style={{
-              fontSize: 13,
-              color: "rgba(255, 255, 255, 0.7)",
+              fontSize: 12,
+              color: "rgba(255, 255, 255, 0.55)",
               fontFamily: "Inter, system-ui, sans-serif",
-              lineHeight: 1.45,
+              lineHeight: 1.4,
             }}
           >
             {contributor.department}
@@ -168,21 +182,15 @@ function CoordinatorCard({ contributor, index }: { contributor: Contributor; ind
 
         <div
           style={{
-            marginTop: 14,
-            paddingTop: 12,
-            borderTop: "1px solid rgba(255, 255, 255, 0.08)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            fontSize: 12,
+            marginTop: 10,
+            paddingTop: 8,
+            borderTop: "1px solid rgba(255, 255, 255, 0.06)",
+            fontSize: 11,
+            color: "rgba(255, 255, 255, 0.4)",
             fontFamily: "Inter, system-ui, sans-serif",
-            color: "rgba(255, 255, 255, 0.45)",
           }}
         >
-          <span>{contributor.year}</span>
-          <span style={{ color: "rgba(34, 211, 238, 0.75)", fontWeight: 500, fontSize: 11, letterSpacing: "0.06em", textTransform: "uppercase" }}>
-            SJCET Palai
-          </span>
+          {contributor.year}
         </div>
       </div>
     </div>
@@ -453,7 +461,7 @@ export default function MakersShowcase() {
                     </span>
                   </div>
 
-                  <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 24, maxWidth: 660, margin: "0 auto" }}>
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", gap: 16 }}>
                     {coordinators.map((c, i) => (
                       <CoordinatorCard key={c.id} contributor={c} index={i} />
                     ))}
@@ -476,7 +484,7 @@ export default function MakersShowcase() {
                     </span>
                   </div>
 
-                  <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(170px, 1fr))", gap: 16 }}>
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", gap: 16 }}>
                     {technical.map((c, i) => (
                       <MemberCard key={c.id} contributor={c} index={i} />
                     ))}
@@ -499,7 +507,7 @@ export default function MakersShowcase() {
                     </span>
                   </div>
 
-                  <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(170px, 1fr))", gap: 16 }}>
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", gap: 16 }}>
                     {design.map((c, i) => (
                       <MemberCard key={c.id} contributor={c} index={i} />
                     ))}
