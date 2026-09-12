@@ -126,11 +126,10 @@ function SiteHeader() {
           ))}
         </nav>
 
-        {/* Quick action button for Robot */}
-        <button
-          type="button"
-          data-robot-action="ask-robot-intro"
-          className="shrink-0 inline-flex items-center justify-center rounded-full font-sans font-medium transition focus:outline-none focus-visible:ring-2 focus-visible:ring-white cursor-pointer"
+        {/* Meet the Makers link */}
+        <Link
+          href="/makers"
+          className="shrink-0 inline-flex items-center justify-center rounded-full font-sans font-medium transition focus:outline-none focus-visible:ring-2 focus-visible:ring-white"
           style={{
             height: "clamp(44px, 5.2vw, 48px)",
             padding: "0 clamp(16px, 2vw, 22px)",
@@ -151,8 +150,8 @@ function SiteHeader() {
             (e.currentTarget as HTMLElement).style.transform = "";
           }}
         >
-          Ask Robot
-        </button>
+          Meet the Makers
+        </Link>
       </div>
 
       {/* ── Mobile layout ── */}
@@ -250,7 +249,7 @@ function SiteHeader() {
           >
             <nav className="flex flex-col gap-1">
               {navLinks.map((link, i) => (
-                <a
+                <Link
                   key={link.label}
                   href={link.href}
                   data-robot-action={link.robotAction ?? undefined}
@@ -274,13 +273,12 @@ function SiteHeader() {
                       ))}
                     </span>
                   )}
-                </a>
+                </Link>
               ))}
 
-              {/* Quick action button for Robot in mobile */}
-              <button
-                type="button"
-                data-robot-action="ask-robot-intro"
+              {/* Meet the Makers link in mobile */}
+              <Link
+                href="/makers"
                 onClick={() => setMenuOpen(false)}
                 className="mt-2 flex items-center justify-center rounded-[14px] py-3 font-sans font-medium text-[15px] transition focus:outline-none focus-visible:ring-2 focus-visible:ring-black"
                 style={{
@@ -289,8 +287,8 @@ function SiteHeader() {
                   animation: `linkIn 0.32s cubic-bezier(0.22,1,0.36,1) ${navLinks.length * 0.05 + 0.08}s both`,
                 }}
               >
-                Ask Robot
-              </button>
+                Meet the Makers
+              </Link>
             </nav>
           </div>
         </>
@@ -312,7 +310,7 @@ function NavItem({
   };
 }) {
   return (
-    <a
+    <Link
       href={link.href}
       data-robot-action={link.robotAction ?? undefined}
       data-robot-from="home"
@@ -348,7 +346,7 @@ function NavItem({
           ))}
         </span>
       )}
-    </a>
+    </Link>
   );
 }
 

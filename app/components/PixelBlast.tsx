@@ -34,7 +34,7 @@ interface ThreeState {
   scene: THREE.Scene;
   camera: THREE.OrthographicCamera;
   material: THREE.ShaderMaterial;
-  clock: THREE.Clock;
+  timer: THREE.Timer;
   clickIx: number;
   uniforms: Record<string, { value: unknown }>;
   resizeObserver: ResizeObserver;
@@ -474,7 +474,7 @@ const PixelBlast = ({
       const quadGeom = new THREE.PlaneGeometry(2, 2);
       const quad = new THREE.Mesh(quadGeom, material);
       scene.add(quad);
-      const clock = new THREE.Clock();
+      const timer = new THREE.Timer();
       const setSize = () => {
         const w = container.clientWidth || 1;
         const h = container.clientHeight || 1;
@@ -571,7 +571,8 @@ const PixelBlast = ({
           raf = requestAnimationFrame(animate);
           return;
         }
-        uniforms.uTime.value = timeOffset + clock.getElapsedTime() * speedRef.current;
+        timer.update();
+        uniforms.uTime.value = timeOffset + timer.getElapsed() * speedRef.current;
         if (liquidEffect) (liquidEffect.uniforms.get('uTime') as THREE.Uniform<number>).value = uniforms.uTime.value as number;
         if (composer) {
           if (touch) touch.update();
@@ -593,7 +594,7 @@ const PixelBlast = ({
         scene,
         camera,
         material,
-        clock,
+        timer,
         clickIx: 0,
         uniforms,
         resizeObserver: ro,

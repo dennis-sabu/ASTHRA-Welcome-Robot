@@ -160,7 +160,14 @@ export function RobotVoiceProvider({ children }: { children: React.ReactNode }) 
   const requestRef = useRef(0);
 
   useEffect(() => {
+    if (typeof window === "undefined" || !window.speechSynthesis) return;
+    const preload = () => {
+      window.speechSynthesis.getVoices();
+    };
+    preload();
+    window.speechSynthesis.addEventListener("voiceschanged", preload);
     return () => {
+      window.speechSynthesis.removeEventListener("voiceschanged", preload);
       window.speechSynthesis?.cancel();
     };
   }, []);
@@ -188,6 +195,9 @@ export function RobotVoiceProvider({ children }: { children: React.ReactNode }) 
       if (!trimmed || typeof window.speechSynthesis === "undefined") return;
 
       window.speechSynthesis.cancel();
+      if (window.speechSynthesis.paused) {
+        window.speechSynthesis.resume();
+      }
       speechRequestId++;
       requestRef.current = speechRequestId;
       const myRequest = speechRequestId;
@@ -221,7 +231,13 @@ export function RobotVoiceProvider({ children }: { children: React.ReactNode }) 
         setState("idle");
       };
 
-      window.speechSynthesis.speak(utterance);
+      setTimeout(() => {
+        if (requestRef.current !== myRequest) return;
+        if (window.speechSynthesis.paused) {
+          window.speechSynthesis.resume();
+        }
+        window.speechSynthesis.speak(utterance);
+      }, 30);
       setStatus("speaking");
     },
     [],

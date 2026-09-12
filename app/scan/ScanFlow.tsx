@@ -214,6 +214,16 @@ export default function ScanFlow() {
     attachStream(stream);
   }, [phase, attachStream]);
 
+  // Announce opening of ID verification station on mount
+  useEffect(() => {
+    const t = window.setTimeout(() => {
+      dispatch({ type: "scan" });
+    }, 300);
+    return () => {
+      window.clearTimeout(t);
+    };
+  }, [dispatch]);
+
   useEffect(() => {
     return () => {
       resetFlagRef.current = true;
