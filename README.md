@@ -1,36 +1,121 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# ASTHRA Welcome Robot
+
+Interactive welcome kiosk web app for **Asthra 11.0** (SJCET Palai), built with Next.js.
+
+It combines:
+- ID-card scanning flow with a scanner API
+- Event discovery and QR-based registration links
+- Visitor feedback collection
+- Admin dashboard for analytics and contributor management
+- Public “Meet the Makers” showcase
+
+## Tech Stack
+
+- Next.js 16 (App Router)
+- React 19 + TypeScript
+- Tailwind CSS 4
+- Supabase (Database + Storage)
+
+## Features
+
+- **Home (`/`)**: animated landing with guided navigation
+- **Scan (`/scan`)**: camera capture, ID image upload to scanner API, personalized greeting
+- **Events (`/events`)**: searchable/filterable event explorer with per-event QR modal
+- **Feedback (`/feedback`)**: 5-question rating flow stored in Supabase
+- **Admin (`/admin`)**: password-gated panel for:
+  - feedback analytics
+  - contributor CRUD
+  - contributor image uploads to Supabase Storage (`contributors` bucket)
+- **Makers (`/makers`)**: public contributors showcase
+
+## Prerequisites
+
+- Node.js 20+
+- npm
+- Supabase project (for feedback/admin/makers data)
+- Scanner backend API (for `/scan` flow)
+
+## Environment Variables
+
+Create a `.env.local` file in the project root:
+
+```bash
+NEXT_PUBLIC_SUPABASE_URL=your_supabase_project_url
+NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=your_supabase_anon_key
+SUPABASE_SERVICE_ROLE_KEY=your_supabase_service_role_key
+NEXT_PUBLIC_SCANNER_API_URL=http://127.0.0.1:8000
+NEXT_PUBLIC_ADMIN_PASSWORD=change-this-password
+```
+
+### Notes
+
+- `SUPABASE_SERVICE_ROLE_KEY` is **server-only** and must never be exposed to the browser.
+- `NEXT_PUBLIC_ADMIN_PASSWORD` defaults in code if unset; set this explicitly in production.
+- If the scanner backend runs elsewhere, update `NEXT_PUBLIC_SCANNER_API_URL`.
+
+## Supabase Setup
+
+This app expects:
+
+- A `feedbacks` table with columns:
+  - `id`, `session_id`
+  - `q1_overall_design`, `q2_ui_visual`, `q3_id_scanning`, `q4_event_registration`, `q5_overall_experience`
+  - `user_agent`, `submitted_at`
+- A `contributors` table with columns:
+  - `id`, `name`, `department`, `year`, `role`, `image_url`, `created_at`
+- A public storage bucket named `contributors`
+
+The app auto-creates the `contributors` bucket when contributor images are uploaded from admin.
 
 ## Getting Started
 
-First, run the development server:
-
 ```bash
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000).
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Scripts
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```bash
+npm run dev    # start local dev server
+npm run build  # production build
+npm run start  # run production server
+npm run lint   # run ESLint
+```
 
-## Learn More
+## Project Structure
 
-To learn more about Next.js, take a look at the following resources:
+```text
+app/
+  admin/        # admin UI + server actions
+  components/   # shared UI, robot voice/hud, effects
+  events/       # events explorer
+  feedback/     # feedback flow
+  makers/       # public contributor showcase
+  scan/         # ID scanning flow
+lib/
+  data.ts           # event data source
+  feedbackActions.ts
+  supabase.ts
+  supabaseAdmin.ts
+public/
+  events/ staff/ fevicon/
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Scanner API Contract (used by `/scan`)
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+The scan flow expects a JSON response with:
 
-## Deploy on Vercel
+- `success: boolean`
+- `name: string | null`
+- `message: string`
+- `confidence: number`
+- `processing_time_ms?: number`
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## Deployment
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Deploy as a standard Next.js app.
+
+Before deploying, ensure all required environment variables are configured in your hosting platform.
